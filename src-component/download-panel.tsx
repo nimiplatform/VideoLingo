@@ -9,7 +9,7 @@ export function DownloadPanel({ project, disabled, locale, uploadCookies, run, s
 }) {
   const t = translator(locale);
   const initial = project.downloadInput;
-  const [url, setUrl] = useState(initial?.url || ''), [resolution, setResolution] = useState<DownloadInput['resolution']>(initial?.resolution || '1080');
+  const [url, setUrl] = useState(initial?.url || (/^https?:\/\//u.test(project.title) ? project.title : '')), [resolution, setResolution] = useState<DownloadInput['resolution']>(initial?.resolution || '1080');
   const [proxyMode, setProxyMode] = useState(initial?.proxy === undefined ? 'system' : initial.proxy ? 'custom' : 'direct');
   const [proxy, setProxy] = useState(initial?.proxy || ''), [cookies, setCookies] = useState(initial?.cookiesAssetPath || '');
   const [busy, setBusy] = useState(false), [error, setError] = useState('');

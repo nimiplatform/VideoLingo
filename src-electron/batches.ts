@@ -1,3 +1,4 @@
+import { validateDubbingInput } from './dubbing-settings.js';
 import { randomUUID } from 'node:crypto';
 import type { NimiLocalAppClient } from '@nimiplatform/sdk/app';
 import { extractNimiErrorFields } from '@nimiplatform/sdk/types';
@@ -66,10 +67,11 @@ export class Batches {
     if (new Set(inputs.map(item => item.projectId)).size !== inputs.length) throw new Error('Each batch entry requires its own project');
     return this.serial(async () => {
       const epoch = this.epoch, now = new Date().toISOString(); const items: BatchItem[] = [];
-      for (const input of inputs) {
+      for (let input of inputs) {
         projectId(input.projectId);
         if (!['', 'en', 'zh', 'ja', 'fr', 'de', 'it', 'ru', 'es'].includes(input.sourceLanguage)
           || typeof input.targetLanguage !== 'string' || !input.targetLanguage.trim() || input.targetLanguage.length > 80 || typeof input.burnSubtitles !== 'boolean') throw new Error('Invalid batch language or output settings');
+        if (input.dubbing) input = { ...input, dubbing: validateDubbingInput(input.projectId, input.dubbing) };
         const project = await this.projects.get(input.projectId);
         if (project.archivedAt || project.cleanupPending) throw new Error('Restore the project and finish any pending cleanup before queueing it');
         if (!project.source) throw new Error('Import each batch source before creating the queue');
@@ -88,6 +90,7 @@ export class Batches {
     if (project.archivedAt) throw new Error('Restore the archived project before processing');
     if (purpose === 'dubbing') {
       if (!dubbing) throw new Error('Choose a dubbing voice');
+      dubbing = validateDubbingInput(id, dubbing);
       await this.projects.validateSubtitles(id);
     }
     const settings = businessSettings(project);

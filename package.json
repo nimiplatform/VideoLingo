@@ -1,6 +1,6 @@
 {
   "name": "videolingo-nimi",
-  "version": "0.1.3",
+  "version": "0.1.5",
   "private": true,
   "description": "VideoLingo video translation and dubbing for Nimi",
   "type": "module",

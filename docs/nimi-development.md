@@ -1,31 +1,134 @@
 # Nimi 开发入口与当前迁移范围
 
-## 当前完整产品恢复状态
+本项目的目标是通过真实第三方应用验证和修复Nimi平台及接入能力，并交付可构建、经Desktop安装启动和使用的生态App。当前只修平台缺陷和适配引入的接线、依赖、生命周期、存储、权限及构建安装问题；上游App行为和模型内容质量按限制记录，不再做泛化产品优化、质量调参或场景矩阵。长片验收验证功能与校对流程，不要求生成内容无需人工校对。
 
-完整 VideoLingo 适配是本轮目标。此前 0.1.1/0.1.2 包只是局部集成候选，构建和 Nimi Access 通过不等于完整产品交付。当前工作树已恢复原单项目操作流程，仍保留真实 Streamlit renderer、SDK/Kit Host 和原 Python 业务算法；不以接口探测工作台代替产品。下列状态覆盖当前已执行范围，后文保留此前阶段记录。
+## 0.1.5 当前集中交付状态
+
+已接入实际VideoLingo产品工作台、Python业务流程和Nimi SDK/Kit Host，不是独立接口测试页。当前完整本地归档组合为 `dev-28353e9c9`：App Tools 0.7.0、SDK 0.14.0、Kit/native 0.10.0、nimi-coding 0.6.3；固定Node 24和pnpm 10.34.5及锁文件。安装、sync/check及47项App测试（含Python检查）通过；0.1.5生产构建和冻结后端检查待本次集中执行，0.1.5安装运行及正式发布准入为 **NOT-VERIFIED**。旧0.1.4及更早冻结包保持不变。
+
+长片功能链已完成：在原752项目保留旧ASR/翻译及真实时间，只通过正常校对修改显示文本。SDK对公开number[]输入的容量缺陷经manager交付9d修复包解决，原5块44100Hz双声道输入全部完成分离，未缩小输入规避。48段真实语音及混合视频完成；其中一次Qwen3语音生成达到2048 codec token上限，保留原失败记录，在一次明确继续后成功，原20段缓存及VoiceAsset保持不变。没有更换模型、调整生成上限或重做ASR。
+
+最终配音视频为167431817 bytes、734.166667秒，H.264 1280×534和AAC 44100Hz双声道；全量解码通过。可见的Desktop监督App在5、360、720秒处均实际推进播放且无媒体错误。此结果只证明需人工校对样片的功能闭环，不证明旧字幕内容质量；SDK读取产物不等于原生导出。当前清理确认和项目隔离的相关验证已完成，开发Host已通过Desktop正常停止。以下为此前阶段记录；“当前”“尚未”等时间表述均以其阶段为准，最新状态以本节为准。
+
+## 长片功能链继续：分离提交遇到SDK容量缺陷
+
+Runtime环境恢复后，仍使用752项目的原259词及旧识别结果，不重跑ASR或翻译。正常校对界面仅将显示译文“主发动机已启动”改为“主引擎已启动”，保存到用户revision `0e95b9e2ffb6c4ce50965208520f93dad636dfb01446d719f4dc46e7c0029df1`，不更改时间或回填参考。随后以原首段参考方式启动完整配音/背景工作流 `242c833e-0b65-4286-84c8-822003f41bb1`，样片仍需内容校对。
+
+首块人声分离提交前发生 `RangeError: Too many properties to enumerate`，尚无分离Job或配音结果。实际输入44100Hz双声道、156.038095秒、27525164 bytes，在公开300秒/32MiB限额内；原输入保留在本项目separation/inputs/a8727117-c9fb-4504-b104-5df9483c170f/0.wav，SHA-256 `2cdf5a89b6a4c0a8e2c79a2683bdbdcd71864c878565edabdeafb64bed882184`。一次无推理复现通过公开SDK/Kit构造client，并以始终拒绝执行的carrier隔离，提交同长度number[]时carrierCalls=0且同样失败。堆栈定位SDK `assertNoAuthorityMaterial` 的Reflect.ownKeys（validation.js:185），经validateScenarioSpec（ai.js:282）到scenarioJobs.submit（ai.js:63）。公开输入类型要求readonly number[]；没有用类型旁路、缩短音轨或调小产品限额规避。该平台接入缺陷已反馈manager，保留原失败任务，正常修复包到达后只继续分离/配音。
+
+## 完整长片单轮验收：字幕流程完成，质量检查未通过
+
+使用4f82e3494包组及Desktop正式选择的“Whisper transcription with voice activity detection”，新建独立项目 `752bbd37-d78e-4800-a1c2-8067e043f1f2`。原公开Tears of Steel MOV完整导入372178639 bytes，SHA-256仍为 `efa9062d9cdb7a338e40ad530dfdf234806743f29ae6a1a136b97ece4e588e8f`；en提示、简体中文目标、原始音轨、转写前增强关闭，未在App命名或指定Driver。正常字幕工作流 `f3019d1a-06a1-4181-8bb1-283a847927c2` 一次完成ASR、NLP、五步翻译和字幕视频。实际4块offset为0/240.651/480.651/725.161秒，词数150/89/20/0，末块明确no-speech，共259词。所有原报告language均为空，业务语言en仅来自用户明确提示。
+
+48条显示及配音字幕通过现有格式、正时长、配对、顺序和媒体范围检查。但按真实startSeconds/endSeconds核对，chunk1中的“It”起止均为143.31秒，全局383.961秒；其他词未发现非正时长、越界或重叠。该块Job `01M2K2WJW6Z5D8YQ45E42WNVPJ` 状态completed，trace `01M2K2WJW6Z5D8YQ45E61QCJMT`，不是平台拒绝。
+
+仅作评估的官方参考还提示多处疑似漏句：chunk1在全局392.111秒后无词，参考6:36–7:11的若干台词不在结果中；chunk2首词到507.021秒才出现，参考8:13、8:24及8:54–8:59的部分台词也未出现。生成字幕把“We already tried that one It broke my heart!”连为366.701→384.821秒一条，形式有效但内容与停顿仍需核对。没有将参考SRT输入模型、回填字词或补造时间。因此本轮保留已完成字幕结果，将词时间及漏句问题集中反馈manager，未开始该长片的分离、配音和最终配音播放，也未循环重跑或换模型。
+
+原始4份transcription JSON、实际SRT及项目记录保存在 `.nimi/local/long-vad-acceptance/`，并保留CC BY 3.0署名。供定位的chunk1/2 WAV通过SDK直接读取原输入，未重切或转码：chunk1为7680044 bytes、SHA-256 `f27887846c8e4f1dab9457d1c4d884878c0d8677432afc29b897dc75f1a3e0cc`；chunk2为7824364 bytes、SHA-256 `b44cf67ed800877f80070ea4d15a2c5ea46ae7ce6a05f2f6e978679a72b6c18e`。旧84cf、fddb及原TOS失败项目未操作；没有生产打包、App版本升级或发布。
+
+## 当前开发依赖：dev-4f82e3494
+
+在manager正常停止上一开发Host后，按随包升级指南一次性将四个本地归档override切到dev-4f82e3494并更新lock。App Tools0.7.0、SDK0.14.0、Kit/native0.10.0及nimi-coding0.6.3矩阵不变；锁文件除归档路径外，仅Kit的包integrity变化，其他依赖版本没有漂移。目标包的矩阵和SDK/Kit migration notes已核对，安装、sync dry-run、sync/check、类型检查、9项相关启动/清理确认测试及renderer编译通过。
+
+随后通过fresh registration恢复Desktop监督的App，从正常项目选择入口读取原84cf项目，页面显示Nimi已连接、原文、保存的provided参考方式和3段已完成配音/成品入口，无错误提示。仅验证启动与原项目读取，没有运行AI、改动原项目、做十分钟空闲观察或注入旧包的读取client。manager交付的Kit包包含维护恢复修复；这次读取通过不代表已解释此前两次异常的全部原因，也不替代长片质量验收。App版本仍为0.1.4，79f22a2的冻结安装包未改，清理确认源码1f60b42保留，未生产重建或发布。
+
+## 清理确认与入口收尾（源码，尚未打包）
+
+针对安装验收误触暴露的不可逆清理风险，源码使用现有Kit ConfirmDialog增加确认步骤，并把配音清理放入独立的“管理配音文件”区域。确认内容展示项目名称和ID摘要、全部删除范围、保留范围及可能再次推理的成本；取消只撤销请求，确认才调用原有clear。请求绑定展示时的projectId/kind，提交中防重复并锁定关闭，失败保留原请求供明确重试，不做自动重试、备份或撤销框架。
+
+同一次有边界收尾补齐两处具体入口问题：媒体清空复用同一确认步骤，已有源媒体不能通过文件选择框直接替换并重置结果；归档项目的原文语言、转写、分离、分句和翻译等高级处理控件按只读状态禁用，后端原有保护不变。8项针对性确认/清理隔离测试、类型检查、renderer编译和app-tools check通过。
+
+必要CDP验证使用193组合和新监督Host60456。已有84cf项目仅打开配音确认并点击“取消”：项目元数据及全部8项配音资源与前完全一致，没有修改或删除旧验收数据。Dialog进入closed状态时窗口visibilityState为hidden，Page.bringToFront未恢复可见，标准Browser.getWindowForTarget返回-32601不支持。manager仅激活一次实际开发窗口后，visibility恢复visible，取消弹窗正常退出；没有将后台动画现象判为Kit故障，也没有设置viewport。
+
+随后通过正常页面新建无AI临时项目 `21904bac-853d-48e2-831a-1f0adf39354d` 并导入467926 bytes真实媒体，确认已有源文件的直接替换入口禁用。归档并从历史打开后，字幕处理、转写、分离、分句、翻译及原文语言等控件禁用，恢复按钮可用。恢复此临时项目后，打开媒体清理确认，核对项目名/ID和范围，再点击“确认清空媒体”：项目回到empty、source不存在、项目资产为零、弹窗关闭。旧84cf元数据及8项配音资源仍完全不变。未确认删除任何已有配音结果、未运行AI。79f22a2对应的0.1.4包保持冻结，当前源码改动不在该包内。
+
+当前尚未闭合的具体事项是更新后候选的集中安装/原生导出，以及manager负责的技术会话失效与长片ASR质量；已导出成片与安装事故边界按后文保留。没有重新开启全面审计、模型矩阵或生产打包。
+
+## 0.1.4统一Windows本地候选
+
+当前App版本统一为0.1.4，包含356de45的集中回归修复及完整工作台/批量接线。依赖仍使用dev-193f2888a完整本地归档，沿用冻结lock；根App版本本身不改变pnpm依赖解析。按现有脚本执行sync/check、`nimi-app build --target windows-x86_64`、`pnpm test:packaged-backend`和`nimi-app pack --target windows-x86_64 --production`，复用已通过的44项App测试，不重跑业务推理。旧0.1.3/f32284安装包保留。
+
+manager已通过Desktop正常更新0.1.3→0.1.4，安装Job `apj_v1_hqy3FnUmqXQfXGJmyoS23CPbDAFjJSMmYBpC7PAnb0A`，releaseRef `local-package:v1:8473a95d8ddb7061e4f8b485e2793e1c54bdb89a294a7a4b`。正式启动后Access就绪，原“安装态短片验收”项目保留4段配音，既有成片实际从0播放到0:10并变化画面。这个结果证明更新、启动和既有成品访问，不等于本版新业务全链已在安装态重跑。
+
+随后manager尝试通过原生坐标点击 `output_dub.mp4`，实际页面清除了配音结果且没有保存对话框，疑似滚动布局变化后误触“删除配音文件”。manager已披露事故并停止原生操作，之后通过Desktop正常停止App，确认未运行。本次原生导出为NOT-VERIFIED，不将先前备份算作本次导出成功，也不把疑似误触描述成已确认的程序自行删除。
+
+本轮只读核对确认：正常删除配音命令移除该项目 `dubbing/` 下各次成品及逐段缓存，并清除dubbing映射、workflowId/runId；保留源媒体、ASR/NLP、翻译与校对、分离、字幕视频和配音设置。它不删除Runtime Job、artifact或VoiceAsset；批次历史中的输出路径只是引用，并非资源字节备份。现有 `.nimi/local/installed-acceptance/` 仅有先前实际原生导出的 `output_dub.mp4`（544866 bytes，SHA-256 `da4f981f5706429a8d0f0a62a96ddecf9886f80fb2f1c51ddb775c7dacfe2601`）和 `output_sub.mp4`（497275 bytes，SHA-256 `f13e91f91233b50f6b312c9c3113119041f39c13a7b955276c25a9a10565db0f`），未在本App现有安装相关记录中找到该安装项目完整metadata及逐段缓存备份。已有成片可不经推理继续使用，但仅凭两份MP4不能完整还原App配音状态；Runtime原始资源是否仍可取回尚未查询，不能承诺恢复或断言绝对不可恢复。没有修改Runtime存储、项目状态或重跑AI，开发84cf/fddb未操作，程序与安装包保持冻结。
+
+构建准备时，dev CLI收到Ctrl+C后退出1但Host仍存活，manager随后通过Desktop正常停止入口完成关闭；原Host、CDP54418及renderer1467均已退出。该CLI行为只保留为实际记录，本轮不扩展工具链修复。会话偶发失效未定位、长片自动字幕质量失败和人工音质待答复仍保留；未发布或提交Registry。
+
+## 集中开发回归结果
+
+在同一监督Host和193包组合下，已完成本轮指定的代表性工作台与批量回归。独立84cf项目的4条显示字幕在校对页仅将“有时候”改为“有时”，所有时间不变，保存为用户revision `5189512061b15cf5640ada11a730527a7fd7db468ce53974e337c08210ae2aa0`，原模型文件保留；正常生成的字幕视频绑定此revision。原生保存对话框未操作，不能把下述SDK产物读取当作原生导出。
+
+这一步暴露出确定性接线错误：`_8_1`从配音字幕组创建任务，`_8_2`却拿显示字幕匹配，独立显示修订导致 `Matching failed`，发生在任何音色/TTS生成前。已将`_8_2`接到同一配音字幕对，保留原匹配、时长及编排算法；语音细分以配音字幕组为准，显示组不再决定语音段落。针对不同显示/配音文本的任务匹配测试旧代码实际失败、修复后通过，并加入正常App测试入口；其中固定音轨时长只覆盖文本来源边界。
+
+随后只在原失败配音工作流 `9caf16df-5abc-4aa3-9bb4-4382d648d6bd` 点击“继续”，复用已有ASR/NLP/翻译/分离。保存的7.04秒上传参考创建VoiceAsset `01M2JWHT98GR0MWQVPPRZDRGB1`，3段真实合成及混合完成；配音key为 `e8c14fa83b9df8a486a221ee1a3aa565c634ea74350365ef002af506b8cb5b1f`。App视频从0播放到10.982993秒结束、readyState=4、329帧；SDK读取的 `output_dub.mp4` 为544729 bytes，H.264 640×480/AAC 44100Hz双声道，全量解码通过。3条配音字幕时间为正、顺序正确且在媒体范围内；实际任务表仍用“有时候”配音原文，没有把显示修订混入语音。必要结果在 `.nimi/local/concentrated-acceptance/`，人工音质未代为判定。
+
+fddb批次通过真实停止按钮由ready变为canceled，再正常恢复至completed，保留1条实际选择及20个结果引用。前后所有ASR/NLP/翻译/用户修订/分离/配音对象及音频Job引用完全相同，没有新推理；从批次项目链接返回工作台，修订和配音结果可访问。重新选择批次曾显示缓存的ready，已改为选择时读取当前保存状态，复测显示completed及实际结果列表。44项App测试、类型检查、相关renderer编译通过；新候选尚未生产打包或安装，正式发布未进行。
+
+此前两次技术会话失效仍保留为未定位风险；无AI窗口内未复发，以及随后业务完成，都不等于平台已修复。长片自动字幕质量失败仍保留，短片集中回归不外推长片质量。以下阶段记录说明发生顺序，其中先前“暂停/未执行”的条目由本节已完成范围更新。
+
+## 集中开发回归：会话失效待收敛
+
+本轮按04cdb1c候选进行集中CDP回归，复用实际10.966667秒视频，独立项目 `84cf0138-7e75-4e3b-8a7c-45dbed396176` 正常导入467926 bytes。页面保存en/简体中文、24/90参数后完成28词ASR和NLP。翻译到meaning checkpoint时项目轮询出现 `session-invalid`，但随后公开auth仍为session-bound；正常刷新后Host将原任务投影为interrupted。按manager确认的恢复安排，只在原任务 `06225022-5f3c-4984-a275-c4d796ca7168` 点击“继续”，完成五步翻译及字幕视频，没有从头重做ASR/NLP。
+
+新的共享配音控件实际上传7.04秒参考音频并加载至readyState=4，保存provided方式、对应原文及关闭配音再次烧录。原五列XLSX经页面导入，空状态行选中、Done行跳过；关联当前项目后，批次 `fddb88e2-11a7-4bd7-baa5-34614cd911ab` 保存为ready，实际继承en/简体中文、24/90和同项目上传参考及原文，没有改成首段策略。此后又出现一次同类项目读取失效，按manager安排暂停新AI。新配音、校对保存、队列控制/结果访问及原生导出均仍NOT-VERIFIED，不以底层文件读取替代原生步骤。
+
+App修复区分“项目读取中断，请刷新恢复”和确定未绑定；读取失败后停止原轮询，保守隐藏前端业务缓存，等待明确刷新重新确认其归属，不放宽鉴权或自动重放任务。普通console记录首次失败的method、公开错误字段、脱敏reasonMetadata及Host原堆栈，现有onSessionInvalidated回调记录时间。类型检查、6项相关恢复/诊断测试及renderer/Host编译通过。前两次失败的原堆栈和reasonMetadata未被旧代码保留，不能补造；后续脚本对空批次ID的错误也不作为会话失败原因。
+
+修复后仅做一次无AI观察：Host5 PID65360于UTC2026-09-15 15:35:41.976启动，真实工作台保持选中上述项目并运行原project.get轮询，console监听按15:45:57截止，窗口内未复发。15:47:19收尾确认页面仍已连接并清除项目选择，结束自然轮询。CLI输出未提供新的get/list失败堆栈与失效回调，因此本轮没有可配对的前后顺序。manager已确认Runtime/Desktop未重启，并指出技术会话generation切换后旧读取可能被保护拒绝，即使后续auth已重新bound；最初失效来源仍未定位。未更换平台包、改鉴权、生产重建或升级版本，也未宣称平台已修复。
+
+## 整体接线候选：待集中验收
+
+当前主树继续完成产品接线，区别于下文已经冻结并安装的0.1.3包。单项目工作台与批量任务各有入口，项目/历史和原处理设置位于侧栏；字幕、校对、配音及成品仍使用既有真实业务链。链接导入和任务表URL先进入完整下载设置页，再开始网络请求，代理与网站Cookie可在首次下载前配置。批次草稿跨页面保留，批量停止已接通，语言和参数继承实际项目设置。
+
+单项目与批量复用同一声音设置控件，提供预置音色、已有音色、首段/逐段/上传参考、参考播放及配音输出设置；可先保存项目配音选择再用于任务表和批次，不再强制首段参考。Host在创建队列前校验输入与参考所属项目，保存设置不会改动已完成媒体或调用AI。媒体文件导入统一显示进度并支持取消，失败时仅移除该次尚未绑定的上传路径。分离进度使用独立的分离块数，工作流显示实际阶段进度。
+
+相关工程检查已通过：43项App测试、类型检查、renderer/Host编译与app-tools check。新增检查覆盖配音设置持久化不改成品、跨项目参考在派发前拒绝，以及取消导入不绑定部分媒体。本次没有执行模型调用、CDP产品试跑、原生界面操作、生产重建或版本升级；193本地完整包组合与冻结0.1.3安装包保持不变。此前的真实运行结果仍只覆盖原已测试版本和路径。
+
+集中验收入口为仓库根的 `pnpm dev -- --list-registrations`，选择fresh结果后 `pnpm dev -- --resume <selector>`，仅连接本次输出的精确App CDP。以一个冻结候选集中验证“视频翻译”工作台的导入→设置→字幕→校对/导出→配音→恢复，以及“批量处理”的任务表/媒体关联→配置继承→队列控制→结果导出；复用已通过的基础接入结果。开发回归后统一构建一次候选，再由Desktop owner执行安装及必要的原生步骤。当前没有已确认必须扩展平台接口才能闭合上述接线的阻塞；长片自动字幕质量失败和人工音质待答复仍保留，不靠补造时间或更换模型消除。
+
+## 当前接入与验收范围
+
+完整 VideoLingo 适配是本轮目标。0.1.3目前仍是本地Nimi适配候选版，不代表完整原产品对接已验收完成。它已接入真实单项目字幕和配音流程，保留Streamlit renderer、SDK/Kit Host及原Python业务算法，并完成下表范围的开发态及安装态任务；不是只有独立接口探测页。早期局部候选、构建、Access及短片通过均不能外推为全部产品路径通过。长片自动字幕质量未通过，部分完整策略组合及人工音质验收未完成；公开包发行验收另外计账。后文保留此前阶段记录，当前结果以下表为准。
+
+下表除明确标注安装态的条目外，业务验证均指开发态；生产构建与公开发行单独列出。
 
 | 原产品能力 | 当前状态 |
 | --- | --- |
 | 导入后一次操作完成字幕链及烧录 | 新项目实际完成，106 词、15 条有效字幕 |
-| 业务参数与字幕长度调节 | 页面 24/90 与配音时长 1.8 秒已传入实际流程；其余配置有相应验证 |
+| 业务参数与字幕长度调节 | 页面24/90与配音时长1.8秒已传入实际流程；未逐一实测全部配置组合 |
 | 转写前人声增强 | 实际完成：源分离输入 44100 Hz 双声道，ASR 使用对应人声的 16000 Hz 单声道副本 |
 | 一键配音与暂停/恢复 | 实际完成 15 条语音；暂停前两条及 VoiceAsset 在恢复后保持不变 |
 | 播放与导出 | 配音视频 H.264/AAC、50.641995 秒完整解码，App 实际播放；原生字幕 ZIP 六份内容与 managed assets 完全相同 |
 | 归档、恢复、删除配音、清空重选 | 新项目实际操作通过，源/成品归档不变；删除与清空不影响 B/TOS 旧项目 |
-| URL、原 XLSX 批量及完整批次 | 受控 HTTP 及公开 HTTPS 下载通过；独立 XLSX 导入、Done 跳过、参数继承、缓存复用与错误隔离已实际通过。YouTube 示例在固定稳定版下载器后从 App 原失败入口重试成功，旧403记录保留 |
+| URL与原XLSX批处理 | 受控 HTTP 及公开 HTTPS 下载通过；独立 XLSX 导入、Done 跳过、参数继承、缓存复用与错误隔离已实际通过。YouTube 示例在固定稳定版下载器后从 App 原失败入口重试成功，旧403记录保留 |
 | 音频单独输入、不烧录 | 独立音频完成字幕及4段配音，实际播放，仅音频/SRT/XLSX；独立视频关闭烧录后完成字幕，无 subtitleVideo。配音视频的烧录开关另有真实 FFmpeg 帧验证 |
 | 长片自动字幕质量 | 未通过；保留零时长及原诊断，不自动填时长或参考答案 |
-| 生产构建与本地安装包 | `29e154c` 的0.1.2已完成官方build、冻结后端检查及pack --production；采用显式交付的本地实验包组合 |
-| Nimi 安装运行 | Desktop已完成0.1.1→0.1.2更新及Access；实际新项目ASR/NLP完成后，翻译因冻结worker编码损坏失败。0.1.3修复后须从该任务继续复验，尚不计为通过 |
+| 生产构建与本地安装包 | `70511ba` 的0.1.3已完成官方build、冻结后端检查及pack --production；40项App测试通过，采用显式交付的本地实验包组合 |
+| Nimi安装态业务 | Desktop完成0.1.2→0.1.3更新及Access；原失败任务保留ASR/NLP，从“继续”完成翻译、字幕视频，再完成首段参考配音、混合、App播放及原生导出。Runtime/Desktop/App进程结束并恢复环境后，重新启动已安装App，成品仍可用并实际播放，无新AI调用 |
+| 人工音质及未跑组合 | 人工试听待回复；逐段参考整片已生成并在App播放，原生导出未确认。上传参考整片、增强长片字幕链及完整长片配音仍为NOT-VERIFIED；后续界面验收已按用户Escape停止信号暂停 |
 | 正式发布准入 | NOT-VERIFIED；未发布、未提交Registry，本地实验包验收不等于公开包最终验收 |
 
 本次正常单项目验收位于 `.nimi/local/full-app-acceptance/`。新项目 `da30ee95-93e4-4e0a-aca3-e2523b1be411` 已在导出后通过真实清理动作回到 empty；必要产物已保留，旧 B/TOS 未覆盖。启用增强或改变实际 ASR 输入必须重新处理对应输入，不复用原轨结果；相关拒绝/恢复测试覆盖该边界。
 
 当前工具组合已显式升级到 manager 交付的 `dev-193f2888a`（App Tools 0.7.0、SDK 0.14.0、Kit 0.10.0、nimi-coding 0.6.3），固定锁文件；SDK/Kit/native 执行包与 cd1 相同。现有 `.nimi/local/admission` 保持独立身份与 studio-voice 最小 closure，正常升级/sync/check；已按其 Host、preload、renderer bootstrap、public client 与 AIConfig 源码对齐基础接线，没有将参考 UI 复制成目标产品。参考 0.1.0 已正常 build/pack --production；manager 通过真实 Desktop 原生选包、预检、安装和启动确认 installed running / accessAvailable=true / ACTION_EXECUTED。同包参考的安装态 Access 基线通过，不替代目标 App 的业务验收。
 
-已冻结完整0.1.2为 `dist/nimi-app/ai.nimi.videolingo-0.1.2-windows-x86_64.nimiapp`，1071597021 bytes，SHA-256 `589585e68a59e58620a99ec4f6fb2d1bdebe156c842c0da2b59d6473a9df3c4f`。该包包含固定的yt-dlp2026.8.19及完整产品恢复代码；此前同名局部候选不代表此包。2026-09-15，manager通过Desktop正常本地更新完成，安装Job为 `apj_v1_gkiTk7wj4Q6dJ9F3dpXfcACGNCLZdIooMUjC2_QPDew`。该包保持不变，后续修复使用0.1.3。
+已冻结0.1.2为 `dist/nimi-app/ai.nimi.videolingo-0.1.2-windows-x86_64.nimiapp`，1071597021 bytes，SHA-256 `589585e68a59e58620a99ec4f6fb2d1bdebe156c842c0da2b59d6473a9df3c4f`。该包包含固定的yt-dlp2026.8.19及上述业务接入代码；此前同名局部候选不代表此包。2026-09-15，manager通过Desktop正常本地更新完成，安装Job为 `apj_v1_gkiTk7wj4Q6dJ9F3dpXfcACGNCLZdIooMUjC2_QPDew`。该包保持不变，后续修复使用0.1.3。
 
 安装态新项目使用10.966667秒视频，ASR完成28词、NLP完成；翻译阶段实际报 `'utf-8' codec can't encode character '\udc80' in position 111: surrogates not allowed`。以0.1.2的本地冻结payload做一次无推理拒绝检查，确认正常Host传入的“简体中文”在Python配置中变为 `绠\uDC80浣撲腑鏂\uDC87`，中文selectionKey也损坏；标准流错误编码往返会掩盖此损坏，严格UTF-8缓存写入才暴露错误。证据保留在 `.nimi/local/installed-encoding/frozen-probe/config.yaml`。0.1.3改为显式严格UTF-8字节协议，开发与冻结入口复用相同实现；不是丢弃异常字符、修改模型输出或更换模型。原安装失败任务及其ASR/NLP保留，修复后只继续未完成阶段。
+
+0.1.3冻结程序来自 `70511ba`；包为 `dist/nimi-app/ai.nimi.videolingo-0.1.3-windows-x86_64.nimiapp`，1071602027 bytes，SHA-256 `f32284fe326f144ce7bf1462f3fc38172ab05033892162465d8042beb594e2e5`。Desktop实际更新Job `apj_v1__PHntWrsbKxsaGkUc2jE7JiauXZ5R7G2JLIApxi_nN8` 完成，正常启动running/Access ready；Deploy入口已隐藏。manager在原失败任务“继续”后完成翻译及字幕视频，随后正常一键首段参考配音完成4段语音及混合。原生导出位于 `.nimi/local/installed-acceptance/`：`output_sub.mp4` 为497275 bytes，`output_dub.mp4` 为544866 bytes；均为H.264 640×480、AAC 44100Hz双声道、10.982993秒，全量解码exit0。配音视频在安装App实际播放0:00至0:10并变换画面，非静音音轨mean -30.3dB/max -13.7dB。输入本身已有字幕，本次配音关闭再次烧录；看到输入字幕不能证明新烧录。该结果证明本次安装态短片业务及原失败恢复，不证明人工音质或长片质量。
+
+持久化复验由manager完成：原Runtime、Desktop和App进程均已结束后，通过各自正式入口恢复环境，再由Desktop启动已安装0.1.3。Access重新就绪，原完成项目、4段音频、混合音轨及XLSX/SRT/MP3/MP4产物均保留；最终视频再次从0:00播放至0:10并变化画面，没有新AI调用。此处复用manager原生操作结果，不增加生产CDP或启动开发App来代替安装态证据。文档收尾不改变上述冻结程序、安装包和测试范围。
+
+## 剩余分支继续验证与用户暂停
+
+按manager指定范围，复用0.1.3程序，从fresh registration恢复Desktop监督开发App，在专用HTTPS项目 `b289d5c4-f07a-4952-8e30-ce93f0088cba` 的正常界面选择“逐段匹配人声”并开始整片配音。实际工作流 `a0329e30-60f0-4d3c-a945-a7a259caedbe` 完成源分离、10个对应原声片段的音色创建、16段合成音频及最终混合；配音key为 `26e29c825e78cebf1237c9d1cfbdd3339399e75a67143e4d9a44a2091f403ff8`。App最终视频duration为50.641995秒、readyState=4，实际播放12→37.867358秒，解码帧199→972；截图与实际项目、任务表、SRT保存在 `.nimi/local/remaining-branches/per-segment/`。
+
+实际前后比较确认chunks、NLP、translation、transcript、wordCount、outputPaths及source完全相同。项目runId由 `a6063735-c542-4fce-bb58-f2780d0bd3c4` 变为 `c76cc022-f5d8-427a-9b42-a45102017ed3`，这是既有dub入口新建Activity的正常更新，不是固定ASR身份。先前“runId也相同”的汇报已经更正；本次没有重做ASR/NLP/字幕。旧B/TOS项目未操作。
+
+正常 `output_dub.mp4` 按钮打开原生保存对话框后，manager收到用户物理Escape停止Computer Use的信号，未完成或确认保存。因此逐段整片原生导出仍NOT-VERIFIED，不把管理存储中的成品或本地任务表/SRT读取当作此导出已通过。后续依赖界面的验收暂停，未开始上传参考整片及新项目的人声增强长片任务，也不重跑AI；等待用户继续。当前结果不改变人工音质、长片自动字幕质量和公开发行的限制。
 
 
 已交付的冻结 **0.1.1** 候选为隔离提交 `b2f03f8`，基于 `852c127` 的短片功能，只修复冻结 renderer 启动和启动错误可见性。主树已整合此修复并保留后续长视频/批量代码；这些后续代码不在已交付候选中。使用 `dev-72951f582` 完整本地包组合，SDK/Kit/native 执行代码与原 a6 相同，更新包含正常交付的本地安装及 Job 恢复文档。后续主树产包应使用新的候选版本与独立输出目录，不覆盖此 0.1.1 包。
@@ -40,7 +143,7 @@
 
 ## 独立安装与运行
 
-当前开发组合：Node 24、pnpm 10.34.5、Python 3.14；App Tools 0.7.0、SDK 0.14.0、Kit/native 0.10.0、nimi-coding 0.6.3。主树四个平台归档均来自 manager 的 `dev-193f2888a` 交付，冻结0.1.1仍使用原729组合。本 App 的 `pnpm-workspace.yaml` 指定完整本地归档，`pnpm-lock.yaml` 固定实际解析；Python依赖固定在 `requirements-nimi.lock`。不借用主仓或父工作区依赖。当前完整0.1.2的生产构建与冻结后端检查已通过；旧阶段的未验证记录以下保留，当前状态以上表为准。
+当前开发组合：Node 24、pnpm 10.34.5、Python 3.14；App Tools 0.7.0、SDK 0.14.0、Kit/native 0.10.0、nimi-coding 0.6.3。主树四个平台归档均来自 manager 的 `dev-4f82e3494` 交付，冻结0.1.1仍使用原729组合。本 App 的 `pnpm-workspace.yaml` 指定完整本地归档，`pnpm-lock.yaml` 固定实际解析；Python依赖固定在 `requirements-nimi.lock`。不借用主仓或父工作区依赖。当前0.1.3的生产构建与冻结后端检查已通过；旧阶段的未验证记录以下保留，当前状态以上表为准。
 
 ```powershell
 python -m venv .venv

@@ -41,6 +41,16 @@ test('archiving keeps readable files and blocks mutation until explicitly restor
   assert.equal(f.modelCalls(), 0);
 });
 
+test('voice preferences can be saved for future single and batch work without changing completed media', async () => {
+  const f = fixture(), before = structuredClone(f.project), assets = [...f.assets];
+  const saved = await f.app.updateDubbingSettings(id, { voiceKind: 'preset', voiceId: 'chosen-voice', burnSubtitles: false });
+  assert.deepEqual(saved.dubbingSettings, { voiceKind: 'preset', voiceId: 'chosen-voice', burnSubtitles: false });
+  assert.deepEqual(saved.dubbing, before.dubbing);
+  assert.deepEqual(saved.source, before.source);
+  assert.deepEqual([...f.assets], assets);
+  assert.equal(f.modelCalls(), 0);
+});
+
 test('deleting dubbing keeps the source, subtitles and supplied reference', async () => {
   const f = fixture(), result = await f.app.clear(id, 'dubbing');
   assert.equal(result.dubbing, undefined); assert.equal(result.transcript, f.project.transcript);

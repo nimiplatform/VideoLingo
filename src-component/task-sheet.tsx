@@ -1,3 +1,4 @@
+import { dubbingSettingsFor } from '../src-electron/dubbing-settings.js';
 import { translator } from './localization.js';
 import React, { useState } from 'react';
 import { Button } from '@nimiplatform/kit/ui';
@@ -30,7 +31,7 @@ export function TaskSheetPanel({ locale, disabled, projects, readSheet, importFi
       {row.selected && <div className="vl-row"><select aria-label={`sheet-project-${row.row}`} value={row.projectId || ''} disabled={disabled || busy} onChange={event => patch(row.row, { projectId: event.target.value })}>
         <option value="">{t('Choose a media project', '选择媒体项目')}</option>{projects.filter(project => project.source || project.id === row.projectId).map(project => <option key={project.id} value={project.id}>{project.title}</option>)}</select>
         {row.projectId ? <Button tone="secondary" disabled={busy} onClick={() => void perform(() => openProject(row.projectId!))}>{t('Open project', '打开项目')}</Button>
-          : row.isUrl ? <Button tone="secondary" disabled={disabled || busy} onClick={() => void perform(async () => patch(row.row, { projectId: (await beginUrl(row.videoFile)).id }))}>{t('Download into a new project', '下载到新项目')}</Button>
+          : row.isUrl ? <Button tone="secondary" disabled={disabled || busy} onClick={() => void perform(async () => patch(row.row, { projectId: (await beginUrl(row.videoFile)).id }))}>{t('Set up link download', '设置链接下载')}</Button>
           : <input type="file" aria-label={`sheet-file-${row.row}`} disabled={disabled || busy} onChange={event => {
             const file = event.target.files?.[0]; if (!file) return;
             void perform(async () => { if (file.name.toLowerCase() !== row.videoFile.toLowerCase()) throw new Error(`Row ${row.row}: choose ${row.videoFile}`); patch(row.row, { projectId: (await importFile(file)).id }); });
@@ -47,7 +48,7 @@ export function TaskSheetPanel({ locale, disabled, projects, readSheet, importFi
         const settings = businessSettings(project);
         items.push({ projectId: project.id, title: project.title, sourceLanguage: row.sourceLanguageSpecified ? row.sourceLanguage : settings.sourceLanguage,
           targetLanguage: row.targetLanguage || settings.targetLanguage, burnSubtitles: settings.burnSubtitles, vocalEnhancement: settings.vocalEnhancement,
-          ...(row.dubbing ? { dubbing: { voiceKind: 'reference', referenceMode: 'first', burnSubtitles: settings.burnSubtitles } as const } : {}) });
+          ...(row.dubbing ? { dubbing: dubbingSettingsFor(project) } : {}) });
       }
       addItems(items); setRows([]);
     })}>{t('Add selected rows to the queue', '将所选行加入队列')}</Button>}

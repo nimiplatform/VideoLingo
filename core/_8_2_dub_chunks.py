@@ -7,8 +7,10 @@ from core.tts_backend.estimate_duration import init_estimator, estimate_duration
 from core.utils import *
 from core.utils.models import *
 
-SRC_SRT = "output/src.srt"
-TRANS_SRT = "output/trans.srt"
+# Speech tasks and their lines share the editable dubbing pair. Display edits
+# have a separate purpose and must not change or break the spoken input.
+SRC_SRT = "output/audio/src_subs_for_audio.srt"
+TRANS_SRT = "output/audio/trans_subs_for_audio.srt"
 MAX_MERGE_COUNT = 5
 ESTIMATOR = None
 

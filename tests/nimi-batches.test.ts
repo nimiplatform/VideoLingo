@@ -52,6 +52,16 @@ test('restart presents a persisted running batch as interrupted without dispatch
   assert.deepEqual(f.started, []);
 });
 
+test('invalid uploaded-reference ownership is rejected before a batch can dispatch prerequisites', async () => {
+  const f = setup();
+  await assert.rejects(f.make().create('Invalid reference', [{ ...f.items[0]!, dubbing: {
+    voiceKind: 'reference', referenceMode: 'provided', burnSubtitles: false,
+    referenceAssetPath: `projects/${second}/voice-reference/${second}.wav`,
+  } }]), /this project/);
+  assert.equal(f.data.size, 0);
+  assert.deepEqual(f.started, []);
+});
+
 test('the single-project subtitle action uses existing results and reaches the original final rendering step', async () => {
   const f = setup(); let renders = 0;
   Object.assign(f.projects.get(first)!, { transcript: 'Existing source', detectedLanguage: 'en', state: 'transcribed', nlp: { state: 'completed' },

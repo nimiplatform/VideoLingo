@@ -1,6 +1,6 @@
 app_id: ai.nimi.videolingo
 display_name: VideoLingo
-version: 0.1.3
+version: 0.1.5
 profile: standalone
 manifest_role: submitted-input
 app_access:
@@ -16,7 +16,7 @@ required_standardized_feature_refs: []
 storage_policy:
   kind: nimi-mediated-default
 metadata:
-  summary: 自动转写、翻译字幕与视频配音。当前开发版本已验证短片字幕、参考音色与整片背景混合，长视频和批量流程仍在验收。
+  summary: VideoLingo的Nimi生态适配：媒体导入、字幕校对、配音与批量处理。生成内容需要人工校对。
   icon: docs/public/apple-touch-icon.png
   readme: docs/nimi-development.md
   release_notes: RELEASE_NOTES.md

@@ -1,3 +1,4 @@
+import { hostReadFailure } from './host-read-error.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn, type ChildProcess } from 'node:child_process';
@@ -33,9 +34,18 @@ void app.whenReady().then(async () => {
     appId: APP_ID, allowedRendererUrls, ipcMain,
     assetMediaPlatform: { protocol, webRequest: session.defaultSession.webRequest, webContents },
     appCommandHandlers: {
-      'videolingo.projects.list': () => projects!.list(),
-      'videolingo.project.get': ({ payload }) => projects!.get(text(payload.projectId)),
+      'videolingo.projects.list': async () => {
+        try { return await projects!.list(); } catch (error) {
+          console.warn('VideoLingo Host read failed', new Date().toISOString(), hostReadFailure('videolingo.projects.list', error), error instanceof Error ? error.stack : undefined); throw error;
+        }
+      },
+      'videolingo.project.get': async ({ payload }) => {
+        try { return await projects!.get(text(payload.projectId)); } catch (error) {
+          console.warn('VideoLingo Host read failed', new Date().toISOString(), hostReadFailure('videolingo.project.get', error), error instanceof Error ? error.stack : undefined); throw error;
+        }
+      },
       'videolingo.project.create': ({ payload }) => projects!.create(text(payload.title)),
+      'videolingo.project.update-dubbing-settings': ({ payload }) => projects!.updateDubbingSettings(text(payload.projectId), payload.input as DubbingInput),
       'videolingo.project.update-settings': ({ payload }) => projects!.updateSettings(text(payload.projectId), payload.settings as BusinessSettings),
       'videolingo.project.archive': ({ payload }) => projects!.archive(text(payload.projectId), payload.archived === true),
       'videolingo.project.clear': ({ payload }) => projects!.clear(text(payload.projectId), text(payload.kind) as 'media' | 'dubbing'),
@@ -79,7 +89,7 @@ void app.whenReady().then(async () => {
       'videolingo.project.pause': ({ payload }) => projects!.control(text(payload.projectId), 'pause'),
       'videolingo.project.cancel': ({ payload }) => projects!.control(text(payload.projectId), 'cancel'),
     },
-    onSessionInvalidated: () => { batches?.invalidate(); projects?.invalidate(); },
+    onSessionInvalidated: () => { console.warn('VideoLingo protected session invalidated', new Date().toISOString()); batches?.invalidate(); projects?.invalidate(); },
   });
   projects = new Projects(bridge.services, appRoot, __NIMI_ELECTRON_PRODUCTION__);
   batches = new Batches(bridge.services.storage, projects);

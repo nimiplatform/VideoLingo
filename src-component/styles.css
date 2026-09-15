@@ -3,6 +3,20 @@
 @import '@nimiplatform/kit/ui/themes/light.css';
 @source '../node_modules/@nimiplatform/kit/dist/**/*.{js,mjs}';
 .vl-workspace { font: 15px/1.5 system-ui, sans-serif; color: #172a31; --nimi-color-text: #172a31; }
+.vl-workspace [hidden] { display: none !important; }
+.vl-navigation { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid #dce3e7; }
+.vl-product { display: grid; grid-template-columns: minmax(250px, 320px) minmax(0, 1fr); gap: 28px; align-items: start; }
+.vl-library { border-right: 1px solid #dce3e7; padding: 20px 24px 20px 0; min-width: 0; }
+.vl-library h3 { font-size: 18px; font-weight: 650; margin-bottom: 12px; }
+.vl-library .vl-row { align-items: stretch; }
+.vl-library .vl-row > label, .vl-library select, .vl-library input:not([type=checkbox]), .vl-library .vl-settings-grid { width: 100%; min-width: 0; }
+.vl-library .vl-settings-grid { grid-template-columns: minmax(0, 1fr); }
+.vl-main { min-width: 0; }
+.vl-main > .vl-section:first-child { border-top: 0; }
+.vl-workspace details > summary { padding: 12px 0; cursor: pointer; font-weight: 550; }
+.vl-voice-settings { padding: 12px 16px; margin: 12px 0; border: 1px solid #dce3e7; border-radius: 8px; }
+.vl-upload-progress progress { width: 100%; }
+@media (max-width: 950px) { .vl-product { grid-template-columns: minmax(0, 1fr); } .vl-library { border-right: 0; border-bottom: 1px solid #dce3e7; padding-right: 0; } }
 .vl-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
 .vl-section { border-top: 1px solid #dce3e7; padding: 20px 0; }
 .vl-section h3 { margin: 0 0 12px; font-size: 20px; font-weight: 650; }

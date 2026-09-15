@@ -11,7 +11,7 @@ from translations.translations import DISPLAY_LANGUAGES, init_display_language
 from core.st_utils.nimi_workspace import render_nimi_workspace
 
 ROOT = Path(__file__).resolve().parent
-st.set_page_config(page_title="VideoLingo", page_icon=str(ROOT / "docs/logo.svg"))
+st.set_page_config(page_title="VideoLingo", page_icon=str(ROOT / "docs/logo.svg"), layout="wide")
 
 
 def main():

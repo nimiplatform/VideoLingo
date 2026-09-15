@@ -1,3 +1,4 @@
+import { validateDubbingInput } from './dubbing-settings.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { copyFile, mkdir, mkdtemp, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
@@ -136,6 +137,21 @@ export class Projects {
       this.guard(epoch);
       await this.services.storage.writeJson(INDEX, [...ids, project.id]);
       return project;
+    });
+  }
+
+  async updateDubbingSettings(id: string, input: DubbingInput): Promise<VideoLingoProject> {
+    const settings = validateDubbingInput(id, input);
+    this.assertOwner(id); const epoch = this.epoch;
+    return this.serial(async () => {
+      this.assertOwner(id); const project = await this.get(id); this.assertEditable(project);
+      if (this.activities.has(id)) throw new Error('Stop the current task before changing voice settings');
+      if (settings.referenceAssetPath) {
+        const asset = await this.services.storage.assets.stat(settings.referenceAssetPath);
+        if (asset.sizeBytes <= 0 || asset.sizeBytes > 20 * 1024 ** 2) throw new Error('Reference must be at most 20 MiB');
+      }
+      project.dubbingSettings = { ...settings, ...(project.source?.mediaType.startsWith('audio/') ? { burnSubtitles: false } : {}) };
+      return this.save(project, epoch);
     });
   }
 
@@ -910,10 +926,7 @@ export class Projects {
   async dub(id: string, input: DubbingInput, owner?: string, runSettings?: BusinessSettings): Promise<VideoLingoProject> {
     this.assertOwner(id, owner);
     projectId(id);
-    if (!input || !['preset', 'asset', 'reference'].includes(input.voiceKind) || typeof input.burnSubtitles !== 'boolean') throw new Error('Choose dubbing settings');
-    if (input.voiceKind !== 'reference' && !input.voiceId) throw new Error('Select an available voice');
-    if (input.voiceKind === 'reference' && !['first', 'per-segment', 'provided'].includes(input.referenceMode || '')) throw new Error('Choose a reference strategy');
-    if (input.referenceMode === 'provided' && (!input.referenceAssetPath || !new RegExp(`^projects/${id}/voice-reference/[0-9a-f-]+\\.(wav|mp3)$`).test(input.referenceAssetPath))) throw new Error('Upload this project’s reference audio');
+    input = validateDubbingInput(id, input);
     return this.serial(async () => {
       this.assertOwner(id, owner);
       if (this.activities.has(id)) throw new Error('Wait for the current project task');

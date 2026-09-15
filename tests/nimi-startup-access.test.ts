@@ -2,7 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { NimiAppAuthProjection } from '@nimiplatform/sdk/app';
 import { createNimiError } from '@nimiplatform/sdk/types';
-import { readStartupAccess } from '../src-component/startup-access.ts';
+import { hostReadFailure, readStartupAccess } from '../src-component/startup-access.ts';
+
+test('Host read diagnostics retain the failing method and public reason without credentials', () => {
+  const error = Object.assign(createNimiError({ message: 'Session invalid', reasonCode: 'SESSION_INVALID', retryable: false }),
+    { reasonMetadata: { phase: 'read', sessionProof: 'do-not-log', nested: { accountId: 'private', state: 'expired' } } });
+  const details = hostReadFailure('videolingo.project.get', error);
+  assert.equal(details.method, 'videolingo.project.get'); assert.equal(details.reasonCode, 'SESSION_INVALID');
+  assert.deepEqual(details.reasonMetadata, { phase: 'read', sessionProof: '[redacted]', nested: { accountId: '[redacted]', state: 'expired' } });
+});
 
 const ready: NimiAppAuthProjection = { mode: 'local-app', state: 'session-bound', sessionBound: true, reasonCode: 'action-executed', actionHint: '', retryable: false };
 const transient: NimiAppAuthProjection = { mode: 'local-app', state: 'unavailable', sessionBound: false, reasonCode: 'runtime-service-unavailable', actionHint: '', retryable: true };

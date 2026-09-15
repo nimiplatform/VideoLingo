@@ -9,6 +9,8 @@ const ACCESS_DENIALS = new Set([
 ]);
 const normalized = (value: string | undefined) => (value || '').toLowerCase().replaceAll('_', '-');
 
+export { hostReadFailure } from '../src-electron/host-read-error.js';
+
 function denied(code?: string, reason?: string): boolean {
   return ACCESS_DENIALS.has(normalized(code)) || ACCESS_DENIALS.has(normalized(reason));
 }
