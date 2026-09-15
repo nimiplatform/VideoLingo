@@ -1,0 +1,17 @@
+# App renderer and deterministic business helpers; AI execution belongs to Nimi.
+streamlit==1.63.0
+pandas==3.0.5
+openpyxl==3.1.5
+autocorrect-py==2.14.0
+pydub==0.25.1
+audioop-lts==0.2.2; python_version >= '3.13'
+openai==3.13.0
+json-repair==0.63.4
+ruamel.yaml==0.19.1
+rich==15.0.0
+imageio-ffmpeg==0.6.0
+soundfile==0.13.1
+syllables==1.1.5
+pypinyin==0.55.0
+yt-dlp==2026.6.9
+pyinstaller>=6.16,<7

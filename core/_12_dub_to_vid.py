@@ -3,8 +3,6 @@ import subprocess
 import json
 import math
 
-import cv2
-import numpy as np
 from rich.console import Console
 
 from core._1_ytdlp import find_video_files
@@ -60,28 +58,14 @@ def merge_video_audio():
     VIDEO_FILE = find_video_files()
     background_file = _BACKGROUND_AUDIO_FILE
     
-    if not load_key("burn_subtitles"):
-        rprint("[bold yellow]Warning: A 0-second black video will be generated as a placeholder as subtitles are not burned in.[/bold yellow]")
-
-        # Create a black frame
-        frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(DUB_VIDEO, fourcc, 1, (1920, 1080))
-        out.write(frame)
-        out.release()
-
-        rprint("[bold green]Placeholder video has been generated.[/bold green]")
-        return
-
     # Normalize dub audio
     normalized_dub_audio = 'output/normalized_dub.wav'
     normalize_dub_audio(DUB_AUDIO, normalized_dub_audio)
     
     # Merge video and audio with translated subtitles
-    video = cv2.VideoCapture(VIDEO_FILE)
-    TARGET_WIDTH = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-    TARGET_HEIGHT = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    video.release()
+    probe = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'json', VIDEO_FILE], check=True, capture_output=True, text=True)
+    dimensions = json.loads(probe.stdout)['streams'][0]
+    TARGET_WIDTH, TARGET_HEIGHT = dimensions['width'], dimensions['height']
     rprint(f"[bold green]Video resolution: {TARGET_WIDTH}x{TARGET_HEIGHT}[/bold green]")
     
     subtitle_filter = (
@@ -90,9 +74,11 @@ def merge_video_audio():
         f"OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
         f"BackColour={TRANS_BACK_COLOR},Alignment=2,MarginV=27,BorderStyle=4'"
     )
+    if not load_key('burn_subtitles'):
+        subtitle_filter = 'null'
     
     cmd = [
-        'ffmpeg', '-y', '-i', VIDEO_FILE, '-i', background_file, '-i', normalized_dub_audio,
+        'ffmpeg', '-nostdin', '-y', '-i', VIDEO_FILE, '-i', background_file, '-i', normalized_dub_audio,
         '-filter_complex',
         f'[0:v]scale={TARGET_WIDTH}:{TARGET_HEIGHT}:force_original_aspect_ratio=decrease,'
         f'pad={TARGET_WIDTH}:{TARGET_HEIGHT}:(ow-iw)/2:(oh-ih)/2,'
@@ -108,7 +94,7 @@ def merge_video_audio():
     
     cmd.extend(['-c:a', 'aac', '-b:a', '192k', DUB_VIDEO])
     
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True, stdin=subprocess.DEVNULL)
     rprint(f"[bold green]Video and audio successfully merged into {DUB_VIDEO}[/bold green]")
 
 if __name__ == '__main__':

@@ -50,6 +50,7 @@ def split_by_comma_main(nlp):
         sentences = input_file.readlines()
 
     all_split_sentences = []
+    nlp.prefetch([sentence.strip() for sentence in sentences])
     for sentence in sentences:
         split_sentences = split_by_comma(sentence.strip(), nlp)
         all_split_sentences.extend(split_sentences)

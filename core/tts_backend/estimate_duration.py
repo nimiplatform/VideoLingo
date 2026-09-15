@@ -1,12 +1,10 @@
 import syllables
 from pypinyin import pinyin, Style
-from g2p_en import G2p
 from typing import Optional
 import re
 
 class AdvancedSyllableEstimator:
     def __init__(self):
-        self.g2p_en = G2p()
         self.duration_params = {'en': 0.225, 'zh': 0.21, 'ja': 0.21, 'fr': 0.22, 'es': 0.22, 'ko': 0.21, 'default': 0.22}
         self.lang_patterns = {
             'zh': r'[\u4e00-\u9fff]', 'ja': r'[\u3040-\u309f\u30a0-\u30ff]',
@@ -51,9 +49,8 @@ class AdvancedSyllableEstimator:
         for word in text.strip().split():
             try:
                 total += syllables.estimate(word)
-            except:
-                phones = self.g2p_en(word)
-                total += max(1, len([p for p in phones if any(c in p for c in 'aeiou')]))
+            except Exception as error:
+                raise ValueError(f"Cannot estimate the reading duration of {word!r}") from error
         return max(1, total)
 
     def _detect_language(self, text: str) -> str:

@@ -66,6 +66,7 @@ def split_long_by_root_main(nlp):
         sentences = input_file.readlines()
 
     all_split_sentences = []
+    nlp.prefetch([sentence.strip() for sentence in sentences])
     for sentence in sentences:
         doc = nlp(sentence.strip())
         if len(doc) > 60:

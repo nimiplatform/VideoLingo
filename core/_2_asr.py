@@ -24,7 +24,7 @@ def transcribe():
     if demucs:
         from core.asr_backend.demucs_vl import demucs_audio
         demucs_audio()
-        vocal_audio = normalize_audio_volume(_VOCAL_AUDIO_FILE, _VOCAL_AUDIO_FILE, format="mp3")
+        vocal_audio = normalize_audio_volume(_VOCAL_AUDIO_FILE, _VOCAL_AUDIO_FILE, format="wav")
     else:
         vocal_audio = _RAW_AUDIO_FILE
 

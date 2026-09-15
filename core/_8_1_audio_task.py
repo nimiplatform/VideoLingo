@@ -32,12 +32,8 @@ def check_len_then_trim(text, duration):
             if 'result' not in response:
                 return {'status': 'error', 'message': 'No result in response'}
             return {'status': 'success', 'message': ''}
-        try:    
-            response = ask_gpt(prompt, resp_type='json', log_title='sub_trim', valid_def=valid_trim)
-            shortened_text = response['result']
-        except Exception:
-            rprint("[bold red]🚫 AI refused to answer due to sensitivity, so manually remove punctuation[/bold red]")
-            shortened_text = re.sub(r'[,.!?;:，。！？；：]', ' ', text).strip()
+        response = ask_gpt(prompt, resp_type='json', log_title='sub_trim', valid_def=valid_trim)
+        shortened_text = response['result']
         rprint(Panel(f"Subtitle before shortening: {original_text}\nSubtitle after shortening: {shortened_text}", title="Subtitle Shortening Result", border_style="green"))
         return shortened_text
     else:

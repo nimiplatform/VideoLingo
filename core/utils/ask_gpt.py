@@ -1,8 +1,7 @@
 import os
 import json
 from threading import Lock
-import json_repair
-from openai import OpenAI
+from core.nimi_bridge import NimiRequestError, request_model
 from core.utils.config_utils import load_key
 from rich import print as rprint
 from core.utils.decorator import except_handler
@@ -26,13 +25,13 @@ def _save_cache(model, prompt, resp_content, resp_type, resp, message=None, log_
         with open(file, 'w', encoding='utf-8') as f:
             json.dump(logs, f, ensure_ascii=False, indent=4)
 
-def _load_cache(prompt, resp_type, log_title):
+def _load_cache(model, prompt, resp_type, log_title):
     with LOCK:
         file = os.path.join(GPT_LOG_FOLDER, f"{log_title}.json")
         if os.path.exists(file):
             with open(file, 'r', encoding='utf-8') as f:
                 for item in json.load(f):
-                    if item["prompt"] == prompt and item["resp_type"] == resp_type:
+                    if item.get("model") == model and item["prompt"] == prompt and item["resp_type"] == resp_type:
                         return item["resp"]
         return False
 
@@ -42,37 +41,24 @@ def _load_cache(prompt, resp_type, log_title):
 
 @except_handler("GPT request failed", retry=5)
 def ask_gpt(prompt, resp_type=None, valid_def=None, log_title="default"):
-    if not load_key("api.key"):
-        raise ValueError("API key is not set")
     # check cache
-    cached = _load_cache(prompt, resp_type, log_title)
+    model = load_key("nimi_text_cache_key")
+    cached = _load_cache(model, prompt, resp_type, log_title)
     if cached:
         rprint("use cache response")
         return cached
 
-    model = load_key("api.model")
-    base_url = load_key("api.base_url")
-    if 'ark' in base_url:
-        base_url = "https://ark.cn-beijing.volces.com/api/v3" # huoshan base url
-    elif 'v1' not in base_url:
-        base_url = base_url.strip('/') + '/v1'
-    client = OpenAI(api_key=load_key("api.key"), base_url=base_url)
-    response_format = {"type": "json_object"} if resp_type == "json" and load_key("api.llm_support_json") else None
-
-    messages = [{"role": "user", "content": prompt}]
-
-    params = dict(
-        model=model,
-        messages=messages,
-        response_format=response_format,
-        timeout=300
-    )
-    resp_raw = client.chat.completions.create(**params)
-
-    # process and return full result
-    resp_content = resp_raw.choices[0].message.content
+    result = request_model("text", {"prompt": prompt, "responseType": "json" if resp_type == "json" else "text", "step": log_title})
+    resp_content = result["text"]
+    if result.get("finishReason") != "stop" or not isinstance(resp_content, str) or not resp_content.strip():
+        raise ValueError("Nimi did not return a complete text result")
     if resp_type == "json":
-        resp = json_repair.loads(resp_content)
+        try:
+            resp = json.loads(resp_content)
+        except json.JSONDecodeError as error:
+            raise NimiRequestError({"message": "Nimi returned invalid JSON for a JSON-object request", "reasonCode": "AI_OUTPUT_INVALID", "retryable": False}) from error
+        if not isinstance(resp, dict):
+            raise NimiRequestError({"message": "Nimi JSON-object output must be an object", "reasonCode": "AI_OUTPUT_INVALID", "retryable": False})
     else:
         resp = resp_content
     

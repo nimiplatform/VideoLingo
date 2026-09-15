@@ -176,3 +176,11 @@ installer_files/
 # Streamlit runtime logs from OneKeyStart.bat
 logs/
 videolingo_*.log
+
+# App-local Nimi dependencies and temporary admission host
+node_modules/
+/.nimi/local/
+/dist-component/
+/dist-electron/
+/dist-electron-package/
+/dist-python/

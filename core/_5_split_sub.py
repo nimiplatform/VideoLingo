@@ -38,6 +38,10 @@ def align_subs(src_sub: str, tr_sub: str, src_part: str) -> Tuple[List[str], Lis
             return {"status": "error", "message": "Missing required key: `align`"}
         if len(response_data['align']) < 2:
             return {"status": "error", "message": "Align does not contain more than 1 part as expected!"}
+        if len(response_data['align']) != len(src_part.split('\n')) or any(
+                not isinstance(item, dict) or not isinstance(item.get(f'target_part_{i+1}'), str) or not item[f'target_part_{i+1}'].strip()
+                for i, item in enumerate(response_data['align'])):
+            return {"status": "error", "message": "Aligned translations do not match the source parts"}
         return {"status": "success", "message": "Align completed"}
     parsed = ask_gpt(align_prompt, resp_type='json', valid_def=valid_align, log_title='align_subs')
     align_data = parsed['align']
@@ -85,7 +89,7 @@ def split_align_subs(src_lines: List[str], tr_lines: List[str]):
         remerged_tr_lines[i] = tr_remerged
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=load_key("max_workers")) as executor:
-        executor.map(process, to_split)
+        list(executor.map(process, to_split))
     
     # Flatten `src_lines` and `tr_lines`
     src_lines = [item for sublist in src_lines for item in (sublist if isinstance(sublist, list) else [sublist])]

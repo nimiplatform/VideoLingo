@@ -7,14 +7,16 @@ from core.utils import *
 console = Console()
 
 def valid_translate_result(result: dict, required_keys: list, required_sub_keys: list):
+    if not isinstance(result, dict):
+        return {"status": "error", "message": "Translation result must be an object"}
     # Check for the required key
     if not all(key in result for key in required_keys):
         return {"status": "error", "message": f"Missing required key(s): {', '.join(set(required_keys) - set(result.keys()))}"}
     
     # Check for required sub-keys in all items
     for key in result:
-        if not all(sub_key in result[key] for sub_key in required_sub_keys):
-            return {"status": "error", "message": f"Missing required sub-key(s) in item {key}: {', '.join(set(required_sub_keys) - set(result[key].keys()))}"}
+        if not isinstance(result[key], dict) or not all(isinstance(result[key].get(sub_key), str) for sub_key in required_sub_keys):
+            return {"status": "error", "message": f"Missing or non-text fields in translation item {key}: {', '.join(required_sub_keys)}"}
 
     return {"status": "success", "message": "Translation completed"}
 
@@ -25,16 +27,19 @@ def translate_lines(lines, previous_content_prompt, after_cotent_prompt, things_
     # Retry translation if the length of the original text and the translated text are not the same, or if the specified key is missing
     def retry_translation(prompt, length, step_name):
         def valid_faith(response_data):
-            return valid_translate_result(response_data, [str(i) for i in range(1, length+1)], ['direct'])
+            validated = valid_translate_result(response_data, [str(i) for i in range(1, length+1)], ['origin', 'direct'])
+            if validated['status'] == 'success' and any(response_data[str(i)]['origin'] != line for i, line in enumerate(lines.split('\n'), 1)):
+                return {"status": "error", "message": "Translation changed the original source lines"}
+            return validated
         def valid_express(response_data):
-            return valid_translate_result(response_data, [str(i) for i in range(1, length+1)], ['free'])
+            return valid_translate_result(response_data, [str(i) for i in range(1, length+1)], ['origin', 'direct', 'reflect', 'free'])
         for retry in range(3):
             if step_name == 'faithfulness':
                 result = ask_gpt(prompt+retry* " ", resp_type='json', valid_def=valid_faith, log_title=f'translate_{step_name}')
             elif step_name == 'expressiveness':
                 result = ask_gpt(prompt+retry* " ", resp_type='json', valid_def=valid_express, log_title=f'translate_{step_name}')
             if len(lines.split('\n')) == len(result):
-                return result
+                return {str(i): result[str(i)] for i in range(1, length + 1)}
             if retry != 2:
                 console.print(f'[yellow]⚠️ {step_name.capitalize()} translation of block {index} failed, Retry...[/yellow]')
         raise ValueError(f'[red]❌ {step_name.capitalize()} translation of block {index} failed after 3 retries. Please check `output/gpt_log/error.json` for more details.[/red]')

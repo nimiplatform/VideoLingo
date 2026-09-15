@@ -2,6 +2,7 @@ import functools
 import time
 import os
 from rich import print as rprint
+from core.nimi_bridge import NimiRequestError
 
 # ------------------------------
 # retry decorator
@@ -15,6 +16,9 @@ def except_handler(error_msg, retry=0, delay=1, default_return=None):
             for i in range(retry + 1):
                 try:
                     return func(*args, **kwargs)
+                except NimiRequestError:
+                    # The Host owns cancellation and reports the actual Nimi failure.
+                    raise
                 except Exception as e:
                     last_exception = e
                     rprint(f"[red]{error_msg}: {e}, retry: {i+1}/{retry}[/red]")

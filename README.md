@@ -165,3 +165,215 @@ This project is licensed under the Apache 2.0 License. Special thanks to the fol
 ---
 
 <p align="center">If you find VideoLingo helpful, please give me a ⭐️!</p>
+
+## Nimi integration status (2026-09-14)
+
+**平台能力迭代协作中 — platform capability iteration in progress.** The user has
+authorized complete VideoLingo adaptation with the manager owning the required
+Nimi capability work. This supersedes the earlier decision to stop this candidate
+when a new capability was needed. The App remains a third-party consumer and
+waits for manager-delivered local development packages and formal interface and
+installation guidance. Development and real acceptance do not depend on an npm,
+GitHub or Registry release; publication comes after acceptance. No new capability
+is assumed available. The root App now has a working project/media/transcription
+and source-separation integration; the full translation and dubbing product is still being migrated. The
+baseline is fork `https://github.com/nimiplatform/VideoLingo`, commit
+`5cb55d850561ae6a10a325ece411993db6acc8c1`; the upstream is
+[Huanshere/VideoLingo](https://github.com/Huanshere/VideoLingo). The Apache-2.0
+license, Streamlit product, Python algorithms, and existing business scope remain
+the baseline for this evaluation. No business account or registration flow exists
+in the local product, so Nimi access must not introduce one.
+
+The root `package.json` now defines the actual adopted App, with its Streamlit
+renderer, Electron Host, tests and build commands. It currently uses local
+App Tools 0.7.0, SDK 0.14.0, Kit/native 0.10.0 and nimi-coding 0.6.3; its
+package lock fixes actual resolutions. See [Nimi development](docs/nimi-development.md)
+for the independent Python/Node setup, product interfaces and current results.
+The original admission baseline was App Tools 0.6.0 / SDK 0.13.0 / Kit 0.9.0;
+the earlier temporary results below remain separate. No parent workspace
+dependencies or Nimi source checkout were used.
+
+The bounded [business input/output requirements](docs/nimi-consumer-requirements.md)
+describe word timing, source separation, the exact spaCy consumers, an existing
+short media sample, and reusable media processing. They are consumer requirements,
+not a proposed SDK contract. Both projects consume explicit manager deliveries;
+the root App is the current product migration target.
+If local packages are rejected by app-tools, report the tool defect to the manager;
+do not disable checks or disguise a local package as a public release.
+
+### Product requirements and public mapping
+
+| User task | Actual product path and necessary result | Nimi admission evidence |
+| --- | --- | --- |
+| Import video or audio, or download a YouTube video | `st.py` → `core/st_utils/download_video_section.py` and `core/_1_ytdlp.py`; preserve source media, format handling and preview | Download, decode, resample and bounded slicing remain App media work. Managed persistent project data must use SDK/Kit storage. |
+| Recognize and time speech | `core/_2_asr.py` → WhisperX transcription **and forced alignment**, or ElevenLabs word timestamps → `process_transcription` → `core/_6_gen_sub.py`; needs source text, detected language, and real word start/end times | Initial SDK 0.13.0 lacked the required formal result projection. Local development SDK 0.14.0 / Kit 0.10.0 now deliver typed `job.transcription`. A real English demo produced 106 aligned units and passed the original cleanup/matcher into source SRT; see the dated result below. Other languages, chunk boundaries, no-speech and full product use remain unverified. |
+| Produce coherent single-line translated subtitles | spaCy linguistic segmentation → LLM split/summarize/terminology/translate/reflect/adapt → long-line split and exact source-word alignment; export four SRT variants and optionally burn subtitles | `createNimiLocalAppTextModel` supports structured `responseFormat`; prompts, validation, terminology and splitting algorithms were identified for reuse. Formal model configuration and real structured output remain untested. spaCy uses a learned linguistic model, not automatically authorized deterministic media processing; LLM JSON is not evidence of equivalent behavior. Direct token/POS/dependency/sentence-boundary requirements have been documented for manager-owned platform work. |
+| Dub a video while retaining its background audio | The upstream dubbing chain unconditionally separates vocals and summed non-vocal sources before reference extraction and final mixing | Manager delivery `dev-b29f12026` adds the public `audio-separate` Job. The root App has completed a real paired-WAV separation of the existing demo through Nimi, streamed artifact adoption and deterministic assembly. No App-local Demucs inference was used. Reference extraction, synthesis and final dubbing remain separate unverified work. |
+| Use preset or reference/cloned voices | `core/tts_backend/tts_main.py`, `sf_fishtts.py`, `sf_cosyvoice2.py`, `gpt_sovits_tts.py`; original reference, first-clip and per-clip voice modes; actual synthesized duration, retiming, concatenation and video/audio export | Local App `voice-create` accepts reference audio and returns a VoiceAsset; `speech-synthesize` accepts preset/VoiceAsset references. The generated `studio-voice` module demonstrates both. Eligible configured routes and reference-to-synthesis behavior remain untested. Different provider names do not establish a capability gap. |
+| Pause, resume, stop, retry, archive and batch-process | `core/st_utils/task_runner.py`, `transcription_cache.py`, `ask_gpt.py`, `onekeycleanup.py`, `batch/utils/video_processor.py`; cooperative cancellation, per-stage files, ASR/LLM caches, batch error/retry state | Local App jobs expose submit/get/subscribe/cancel; SDK/Kit provide storage and session invalidation. Workflow checkpoints remain App-owned. The current singleton task pointer and shared relative `output`/configuration paths require project/session isolation during a future adaptation; no isolation or recovery acceptance has run. |
+
+Package references: [SDK integration guide](node_modules/@nimiplatform/sdk/README.md),
+[Local App AI types](node_modules/@nimiplatform/sdk/dist/core/app/local-app-runtime-platform-ai.d.ts),
+[AIConfig types](node_modules/@nimiplatform/sdk/dist/core/ai/capability-configuration.d.ts),
+[Kit Host guide](node_modules/@nimiplatform/kit/shell/electron/README.md), and
+[lifecycle/adapt/acceptance guides](node_modules/@nimiplatform/app-tools/skills/nimi-app-lifecycle/SKILL.md).
+The [public multimodal guide](https://docs.nimi.ai/runtime/multimodal) describes
+voice cloning and artifact contracts, but does not resolve the word-timing or
+source-separation questions above. Internal source/spec links were not followed.
+
+### Bounded execution and manager handoff
+
+App Tools generated a temporary `studio-voice` App under `.nimi/local/admission`
+with App ID `ai.nimi.videolingo.admission`, version 0.1.0. Its generated Host and
+product module were retained. Its own lockfile resolves the same four Nimi
+versions plus Electron 42.10.1. Fresh scaffold validation requires the exact
+matrix **range declarations** (for example `^0.13.0`); compatible exact
+declarations are rejected. The probe therefore retains generated ranges and a
+frozen lockfile. The root tooling manifest retains exact versions.
+
+Probe-only results: `init`, `sync`, `check`, `typecheck`, and `build:electron`
+passed. A frozen install also passed. This establishes the temporary Host's
+engineering preparation, not VideoLingo business behavior or installation.
+
+Initial launch from `.nimi/local/admission`, before the environment was ready:
+
+```text
+pnpm exec nimi-app dev --shell electron
+[nimi-app] failed: Nimi is not running. Open Nimi, sign in, and run this command again.
+```
+
+Expected: Desktop-supervised Electron with this exact App's loopback CDP target.
+At that point the official launcher exited before a protected session was
+available; no AI configuration or consume call ran. This was an environment
+prerequisite failure, not an AI capability rejection. After manager confirmed
+Desktop/Runtime readiness, the same official command launched the supervised
+App successfully; the current protected-session result is recorded below.
+
+Manager owns capability implementation and delivery. The App does not read the
+Nimi main repository/private specifications, implement Runtime, guess artifact
+schemas, or run the old AI engines as a substitute. Work before the next delivery
+is limited to the bounded consumer requirements and necessary independent
+integration preparation. The fixed combination and generated admission project
+are retained. The first local tool delivery below does not include the new speech
+capabilities. An unpublished
+support-boundary documentation correction alone does not establish a new
+capability or an accepted product path.
+
+A non-blocking tooling warning was also observed with pnpm 10.34.5 in the nested
+probe: `pnpm.onlyBuiltDependencies` in generated `package.json` was reported as
+ignored. The frozen install and Host build completed; this warning has not been
+promoted to a capability or launch failure.
+
+### First local development package iteration
+
+The first completed local tool iteration used manager deliveries: App Tools 0.6.1 from
+`dev-6f5b08567`, and SDK 0.13.0, Kit 0.9.0 and its Windows native 0.9.0 package
+from `dev-1f40dc7e1`, with nimi-coding 0.6.3 unchanged. Its independent
+`pnpm-workspace.yaml` retains
+`packages: ['.']`, the prior build-script allowlist, and four explicit local
+tarball overrides. The native package remains Kit's optional dependency.
+Initial install, new-tool sync preview/apply, and reinstall passed; sync retained
+all four overrides and updated the managed App Tools declaration to `^0.6.1`.
+
+With the initial `dev-1f40dc7e1` App Tools archive, the first failed step was
+ordinary `pnpm exec nimi-app check --json`:
+`Local Nimi package is not installed: @nimiplatform/kit-protected-local-win32-x64`.
+The native entry actually resolves from Kit's installed public Electron entry
+and exists in this App's pnpm store; the lock and Kit optional-dependency snapshot
+both resolve the supplied local archive. There is no root direct-dependency link.
+This discrepancy was reported to the manager and corrected through the new
+`dev-6f5b08567` App Tools archive, without an App-side checker edit or direct
+native dependency. Changing only that override, reinstalling and rerunning the
+original check succeeded. Typecheck and Host compilation then passed.
+
+`pnpm exec nimi-app build --target windows-x86_64 --json` passed and executed
+the actual `build:electron:production` owner command, including renderer/Host
+build, isolated production dependency staging and Electron packaging. Output is
+`.nimi/local/admission/dist-electron-package/videolingo-admission-shell-win32-x64/`.
+The executable and ASAR exist. SDK README/public entry, Kit manifest/public
+Electron entry and the native `.node` binary in the actual payload matched the
+selected local archive bytes. This verifies the temporary scaffold payload's
+local-package build; it is not a VideoLingo business build or installation.
+
+After Desktop/Runtime became ready, the original `nimi-app dev --shell electron`
+reported a supervised Electron Host. Only its reported loopback App CDP target
+was used, with title `VideoLingo Admission` and the declared renderer origin.
+The generated SDK client returned `auth.status(): state=session-bound,
+sessionBound=true`; the protected `aiConfig.get()` returned revision `0` with
+empty capabilities/effective selections. No account action was required for
+these reads. No model was selected and no AI consume call or new speech
+capability was tested. Public-release preflight, `.nimiapp` packaging,
+installation and VideoLingo's real user task remain outside this result.
+
+### Aligned transcription delivery (2026-09-15)
+
+The current admission App uses all four archives from manager delivery
+`dev-69274f455`: App Tools 0.7.0, SDK 0.14.0, Kit 0.10.0 and Windows native
+0.10.0. Nimi-coding remains 0.6.3. The delivered version matrix, SDK
+README/CHANGELOG, Kit generation README and upgrade guide were read. Explicit
+override installation, sync preview/apply, reinstall, ordinary check, typecheck
+and Host compilation passed. The previous dev session was stopped normally for
+the environment update; a new official supervised dev session is running.
+
+The delivered completed-job contract now includes `transcription` with
+`status: transcribed | no-speech`, original text, model-reported language and
+ordered `{ text, startSeconds, endSeconds }` alignment units. The documented
+local recipe requires `timestamps: true` for actual alignment, accepts at most
+300 seconds, reports times relative to submitted audio zero with 80 ms granularity,
+and can return character units. The bounded English source-subtitle result is
+recorded below; it does not establish the other language or full product paths.
+
+The repository's `docs/public/videos/demo.mp4` was decoded using the actual
+VideoLingo `convert_video_to_audio` and `audio_slice_wav` functions in an isolated
+App-local case directory. The prepared seekable PCM WAV is 50.64275 seconds,
+16 kHz mono, 1,620,612 bytes, with source offset zero. It is served only by the
+temporary probe at `public/admission/demo.wav`; the source media is unchanged.
+Normal imports of `process_transcription`, `get_sentence_timestamps` and
+`align_timestamp` succeeded in `.nimi/local/media-env`; no AST extraction,
+replacement function, old AI inference or model download was used. Environment
+dependencies are retained in `.nimi/local/media-requirements.txt`.
+
+The initial selection mismatch was resolved as a manager configuration-guidance
+error: Local intent is `{}` and carries no Loadout reference; App options expose
+Nimi's current selection, not all saved Loadouts. Manager made the selection
+through Nimi's model configuration. The App then queried the same public options,
+observed `语音转文字 · Qwen3 ASR with word alignment` ready, and saved only the
+normal `audio.transcribe` Local intent at revision `1`. The clarification was
+read from the SDK README in documentation-only delivery `dev-87d6bbefb`; current
+running overrides remain `dev-69274f455`, as instructed. No App API was invented
+or extended to carry a resource selector.
+
+Real request: `speech-transcribe`, prepared WAV bytes, `timestamps: true`, empty
+language hint/prompt/responseFormat, timeout 300000 ms, source chunk offset `0`.
+Protected Job `01M2GCWJ93TG96W2Q6JSWP2VT1` completed with
+`transcription.status=transcribed`, `language=en`, 106 ordered alignment units and
+the original punctuation-bearing text. `transcriptionText` matched the same
+text. Times ranged from the first word `Sometimes` at 0–0.56 s to `Period.` at
+48.72–49.20 s, within the actual 50.64275-second input. The largest inter-unit
+gap was 4.64 s. Five units had equal start/end; these are actual model outputs
+at the documented granularity, not App-generated timings or a claim of perfect
+word-level acoustic accuracy.
+
+The actual typed result was fed through normal imports of the unchanged
+`process_transcription`, `get_sentence_timestamps` and `align_timestamp` functions.
+All 106 units survived cleanup, and 9 source sentence rows matched and exported
+to `.nimi/local/demo-transcription/source.srt`. The rows were a deterministic
+punctuation split of the actual source text for this bounded timing check;
+spaCy segmentation, translated rows and final single-line product formatting
+were not substituted or claimed. The actual result, source text and word table
+are retained alongside the SRT; `.nimi/local/match-demo-transcript.py` runs this
+specific consumer check without mocks, AST extraction or timestamp estimation.
+This is one successful real transcription-to-source-subtitle path. CJK/other
+languages, nonzero chunk offsets/boundaries, no-speech, cancellation/recovery,
+full translation, source separation and dubbing remain **NOT-VERIFIED**.
+
+| Acceptance claim | Status |
+| --- | --- |
+| VideoLingo development business journey through Nimi | **NOT-VERIFIED** |
+| VideoLingo production build/package | **NOT-VERIFIED** |
+| Formal release/Registry admission | **NOT-VERIFIED** |
+| Nimi installation and installed App operation | **NOT-VERIFIED** |
+
+Only admission preparation has been performed. No VideoLingo product rewrite,
+provider bypass, estimated subtitle timing, release, Registry submission, remote
+setting change or push was performed.

@@ -90,6 +90,7 @@ def split_by_connectors(text, context_words=5, nlp=None):
         # avoiding the fragmentation of a sentence into multiple parts at the same time.
         split_occurred = False
         new_sentences = []
+        nlp.prefetch(sentences)
         
         for sent in sentences:
             doc = nlp(sent)
@@ -130,6 +131,7 @@ def split_sentences_main(nlp):
         sentences = input_file.readlines()
     
     all_split_sentences = []
+    nlp.prefetch([sentence.strip() for sentence in sentences])
     # Process each input sentence
     for sentence in sentences:
         split_sentences = split_by_connectors(sentence.strip(), nlp = nlp)

@@ -40,14 +40,14 @@ def process_audio_segment(audio_file):
     """Process a single audio segment with MP3 compression"""
     temp_file = f"{audio_file}_temp.mp3"
     ffmpeg_cmd = [
-        'ffmpeg', '-y',
+        'ffmpeg', '-nostdin', '-y',
         '-i', audio_file,
         '-ar', '16000',
         '-ac', '1',
         '-b:a', '64k',
         temp_file
     ]
-    subprocess.run(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    subprocess.run(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
     audio_segment = AudioSegment.from_mp3(temp_file)
     os.remove(temp_file)
     return audio_segment
@@ -61,9 +61,7 @@ def merge_audio_segments(audios, new_sub_times, sample_rate):
         for i, (audio_file, time_range) in enumerate(zip(audios, new_sub_times)):
             check_cancel()
             if not os.path.exists(audio_file):
-                console.print(f"[bold yellow]⚠️  Warning: File {audio_file} does not exist, skipping...[/bold yellow]")
-                progress.advance(merge_task)
-                continue
+                raise FileNotFoundError(f"Dubbing segment is missing: {audio_file}")
                 
             audio_segment = process_audio_segment(audio_file)
             start_time, end_time = time_range
@@ -113,9 +111,8 @@ def merge_full_audio():
     with console.status("[bold cyan]📝 Generating subtitle file...[/bold cyan]"):
         create_srt_subtitle()
     
-    if not os.path.exists(audios[0]):
-        console.print(f"[bold red]❌ Error: First audio file {audios[0]} does not exist![/bold red]")
-        return
+    if not audios or len(audios) != len(new_sub_times) or len(lines) != len(audios):
+        raise ValueError('Dubbing audio, text and timing counts differ')
     
     sample_rate = 16000
     console.print(f"[bold green]✅ Sample rate: {sample_rate}Hz[/bold green]")

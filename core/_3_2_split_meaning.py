@@ -84,6 +84,7 @@ def parallel_split_sentences(sentences, max_length, max_workers, nlp, retry_atte
     """Split sentences in parallel using a thread pool."""
     new_sentences = [None] * len(sentences)
     futures = []
+    nlp.prefetch(sentences)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         for index, sentence in enumerate(sentences):

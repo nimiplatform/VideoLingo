@@ -1,0 +1,15 @@
+@import 'tailwindcss';
+@import '@nimiplatform/kit/ui/styles.css';
+@import '@nimiplatform/kit/ui/themes/light.css';
+@source '../node_modules/@nimiplatform/kit/dist/**/*.{js,mjs}';
+.vl-workspace { font: 15px/1.5 system-ui, sans-serif; color: #172a31; --nimi-color-text: #172a31; }
+.vl-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
+.vl-section { border-top: 1px solid #dce3e7; padding: 20px 0; }
+.vl-section h3 { margin: 0 0 12px; font-size: 20px; font-weight: 650; }
+.vl-workspace input:not([type=file]), .vl-workspace select, .vl-workspace textarea { border: 1px solid #c5d1d9; border-radius: 6px; padding: 8px 10px; background: white; color: inherit; }
+.vl-workspace textarea { display: block; width: 100%; resize: vertical; box-sizing: border-box; }
+.vl-workspace video, .vl-workspace audio { display: block; width: 100%; max-height: 420px; margin-top: 16px; }
+.vl-workspace input[type=file] { max-width: 100%; }
+.vl-error { color: #8a1e24; background: #fff1f1; border-radius: 6px; padding: 10px; overflow-wrap: anywhere; }
+.vl-notice { background: #eef5fa; padding: 10px; border-radius: 6px; }
+.vl-config { border: 1px solid #dce3e7; border-radius: 8px; padding: 16px; margin: 16px 0; }
