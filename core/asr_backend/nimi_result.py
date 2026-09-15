@@ -5,7 +5,7 @@ import math
 SUPPORTED_LANGUAGES = {"en", "es", "fr", "de", "it", "ru", "zh", "ja"}
 
 
-def transcript_to_segment(transcript, offset_seconds, duration_seconds):
+def transcript_to_segment(transcript, offset_seconds, duration_seconds, source_language_hint=''):
     if not isinstance(transcript, dict):
         raise ValueError("Nimi did not return a typed transcription")
     if not math.isfinite(offset_seconds) or offset_seconds < 0:
@@ -20,7 +20,11 @@ def transcript_to_segment(transcript, offset_seconds, duration_seconds):
         return None
     if status != "transcribed" or not isinstance(text, str) or not text.strip() or not isinstance(units, list) or not units:
         raise ValueError("Source text and actual alignment units are required")
-    if language not in SUPPORTED_LANGUAGES:
+    if source_language_hint and source_language_hint not in SUPPORTED_LANGUAGES:
+        raise ValueError('Choose a supported explicit source language')
+    if language == '' and not source_language_hint:
+        raise ValueError('The model did not report a language; choose the source language explicitly')
+    if language != '' and language not in SUPPORTED_LANGUAGES:
         raise ValueError(f"VideoLingo source-language processing does not support {language!r}")
     words = []
     previous_start = -1.0
@@ -36,3 +40,14 @@ def transcript_to_segment(transcript, offset_seconds, duration_seconds):
         previous_start = start
         words.append({"word": word, "start": start + offset_seconds, "end": end + offset_seconds})
     return {"text": text, "language": language, "start": words[0]["start"], "end": words[-1]["end"], "words": words}
+
+
+def source_language_for_business(hint, reported_languages):
+    if hint:
+        if hint not in SUPPORTED_LANGUAGES:
+            raise ValueError('Choose a supported explicit source language')
+        return hint
+    reports = set(reported_languages)
+    if '' in reports or len(reports) != 1:
+        raise ValueError('Missing or mixed model-reported languages require an explicit source-language choice')
+    return reports.pop()

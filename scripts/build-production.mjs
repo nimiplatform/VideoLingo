@@ -10,6 +10,8 @@ run(process.execPath, ['scripts/prepare-media.mjs']);
 run(python, ['-m', 'PyInstaller', '--noconfirm', '--clean', '--onedir', '--name', 'videolingo-backend',
   '--distpath', 'dist-python', '--workpath', '.nimi/local/pyinstaller-work', '--specpath', '.nimi/local',
   '--collect-all', 'streamlit', '--collect-all', 'altair', '--collect-all', 'autocorrect_py',
+  '--collect-all', 'yt_dlp',
+  '--collect-all', 'yt_dlp_ejs',
   '--copy-metadata', 'syllables',
   '--hidden-import', 'core.nimi_worker', '--hidden-import', 'core.asr_backend.audio_preprocess', '--hidden-import', 'core._6_gen_sub',
   '--add-data', `${path.join(root, 'st.py') }:.`, '--add-data', `${path.join(root, 'core')}:core`, '--add-data', `${path.join(root, 'translations')}:translations`,

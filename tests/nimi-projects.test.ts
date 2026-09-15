@@ -16,5 +16,7 @@ test('media upload names cannot overwrite another project or an earlier upload',
 
 test('the Python consumer preserves real timestamps and rejects missing alignment', () => {
   const python = path.join(process.cwd(), '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
-  execFileSync(python, ['-X', 'utf8', '-m', 'unittest', 'tests.test_nimi_result', 'tests.test_separation_media', 'tests.test_nimi_model_boundaries'], { stdio: 'pipe', windowsHide: true });
+  execFileSync(python, ['-X', 'utf8', '-m', 'unittest', 'tests.test_nimi_result', 'tests.test_separation_media', 'tests.test_nimi_model_boundaries', 'tests.test_streamed_media', 'tests.test_import_tasks', 'tests.test_product_media_settings'], {
+    stdio: 'pipe', windowsHide: true, env: { ...process.env, PATH: path.join(process.cwd(), '.nimi/local/media-bin') + path.delimiter + process.env.PATH },
+  });
 });

@@ -16,13 +16,21 @@ def time_to_samples(time_str, sr):
     seconds = int(h) * 3600 + int(m) * 60 + float(s) + float(ms) / 1000
     return int(seconds * sr)
 
-def extract_audio(audio_data, sr, start_time, end_time, out_file):
+def extract_audio(reader, sr, start_time, end_time, out_file):
     """Simplified audio extraction function"""
     start = time_to_samples(start_time, sr)
     end = time_to_samples(end_time, sr)
-    if not (0 <= start < end <= len(audio_data)):
+    if not (0 <= start < end <= reader.frames):
         raise ValueError('Reference crop is outside the actual vocal audio')
-    sf.write(out_file, audio_data[start:end], sr)
+    reader.seek(start)
+    with sf.SoundFile(out_file, 'w', samplerate=sr, channels=reader.channels, subtype='PCM_16') as writer:
+        remaining = end - start
+        while remaining:
+            block = reader.read(min(65536, remaining), dtype='float64', always_2d=True)
+            if not len(block):
+                raise ValueError('Reference audio ended before its requested crop')
+            writer.write(block)
+            remaining -= len(block)
 
 def extract_refer_audio_main():
     if not os.path.isfile(_VOCAL_AUDIO_FILE):
@@ -33,19 +41,18 @@ def extract_refer_audio_main():
     
     # Read task file and audio data
     df = pd.read_excel(_8_1_AUDIO_TASK)
-    data, sr = sf.read(_VOCAL_AUDIO_FILE)
     
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
         TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-    ) as progress:
+    ) as progress, sf.SoundFile(_VOCAL_AUDIO_FILE) as reader:
         task = progress.add_task("Extracting audio segments...", total=len(df))
         
         for _, row in df.iterrows():
             out_file = os.path.join(_AUDIO_REFERS_DIR, f"{row['number']}.wav")
-            extract_audio(data, sr, row['start_time'], row['end_time'], out_file)
+            extract_audio(reader, reader.samplerate, row['start_time'], row['end_time'], out_file)
             progress.update(task, advance=1)
             
     rprint(Panel(f"Audio segments saved to {_AUDIO_REFERS_DIR}", title="Success", border_style="green"))

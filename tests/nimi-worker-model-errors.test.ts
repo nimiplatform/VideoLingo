@@ -5,6 +5,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createNimiError, extractNimiErrorFields } from '@nimiplatform/sdk/types';
 import { runMediaWorker } from '../src-electron/media-worker.ts';
+import { checkWorkerEncoding } from './worker-encoding-check.ts';
+
+test('Unicode configuration, model requests and retained refusals survive the real worker channel', async () => {
+  await checkWorkerEncoding(process.cwd(), false);
+});
 
 test('a Host model refusal crosses the real worker channel without a retry or output', async () => {
   const workspace = await mkdtemp(path.join(tmpdir(), 'videolingo-model-error-'));

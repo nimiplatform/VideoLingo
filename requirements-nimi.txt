@@ -13,5 +13,7 @@ imageio-ffmpeg==0.6.0
 soundfile==0.13.1
 syllables==1.1.5
 pypinyin==0.55.0
-yt-dlp==2026.6.9
+yt-dlp==2026.8.19
 pyinstaller>=6.16,<7
+deno==2.8.1
+yt-dlp-ejs==0.8.0

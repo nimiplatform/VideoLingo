@@ -11,8 +11,9 @@ def configuration(request):
         raise ValueError("Choose a supported source language for the text preview")
     value = {"target_language": request.get("targetLanguage", "简体中文"),
              "reflect_translate": request.get("reflect", True),
-             "whisper": {"language": language, "detected_language": language},
+             "whisper": {"language": language, "detected_language": request.get('detectedLanguage', '')},
              "nimi_text_cache_key": request.get("selectionKey", ""),
+             "nimi_persist_text_cache": request.get('operation') == 'translate-subtitles',
              "nimi_tts": request.get("voice", {}),
              "language_split_with_space": ["en", "fr", "de", "it", "ru", "es"],
              "language_split_without_space": ["zh", "ja"]}

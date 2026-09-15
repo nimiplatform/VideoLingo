@@ -5,9 +5,10 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { createHash } from 'node:crypto';
 import { createNimiLocalAppTextModel } from '@nimiplatform/sdk/ai';
-import { createNimiError } from '@nimiplatform/sdk/types';
+import { createNimiError, extractNimiErrorFields } from '@nimiplatform/sdk/types';
 import type { NimiLocalAppAIConsumptionClient, NimiLocalAppClient, NimiLocalAppScenarioJobSpec } from '@nimiplatform/sdk/app';
 import type { WorkerModelHandlers } from './media-worker.js';
+import { retainedJob } from './job-recovery.js';
 
 type Services = { ai: Pick<NimiLocalAppAIConsumptionClient, 'text' | 'scenarioJobs'>; storage: NimiLocalAppClient['storage'] };
 export type ModelOperationContext = {
@@ -17,6 +18,7 @@ export type ModelOperationContext = {
   onMissingJob?: (id: string) => Promise<void>;
   speechCache?: { jobs: Record<string, string>; voices: Record<string, string>; audio: Record<string, { assetPath: string; jobId: string }> };
   saveSpeechCache?: () => Promise<void>;
+  onTextFailure?: (record: Record<string, unknown>) => Promise<void>;
 };
 
 export class ModelOperations {
@@ -40,10 +42,46 @@ export class ModelOperations {
       throw new Error('The worker requested an invalid translation model step');
     }
     this.context.guard(); this.context.signal.throwIfAborted();
-    const result = await createNimiLocalAppTextModel(this.services.ai).generateText({
+    const request = {
       messages: [{ role: 'user', content: [{ type: 'text', text: input.prompt }] }],
       responseFormat: { type: input.responseType === 'json' ? 'json-object' : 'text' }, signal: this.context.signal,
-    });
+    } as const;
+    const events: unknown[] = [];
+    let terminal: unknown, eventBytes = 0, truncated = false, publicInput: unknown;
+    const originalText = this.services.ai.text;
+    const observedText: typeof originalText = { ...originalText, streamTurn: async wireInput => {
+      publicInput = wireInput;
+      const stream = await originalText.streamTurn(wireInput);
+      return {
+        cancel: () => stream.cancel(),
+        async *[Symbol.asyncIterator]() {
+          for await (const event of stream) {
+            const bytes = Buffer.byteLength(JSON.stringify(event));
+            if (eventBytes + bytes <= 2 * 1024 ** 2) { events.push(event); eventBytes += bytes; }
+            else truncated = true;
+            if (event.type === 'completed' || event.type === 'failed') {
+              terminal = bytes <= 2 * 1024 ** 2 ? event : { type: event.type, omittedDueToSize: true };
+            }
+            yield event;
+          }
+        },
+      };
+    } };
+    let result;
+    try {
+      // generateText still consumes its original stream. Observation issues no second request.
+      result = await createNimiLocalAppTextModel({ ...this.services.ai, text: this.context.onTextFailure ? observedText : originalText }).generateText(request);
+    } catch (error) {
+      if (!this.context.signal.aborted && this.context.onTextFailure) {
+        try {
+          await this.context.onTextFailure({ step: input.step, requestContext: input.context || null, publicInput,
+            events, terminal: terminal || null, truncated, failure: extractNimiErrorFields(error) });
+        } catch (retentionError) {
+          if (error instanceof Error) error.message += ` (Could not retain stream diagnostics: ${retentionError instanceof Error ? retentionError.message : String(retentionError)})`;
+        }
+      }
+      throw error;
+    }
     this.context.guard(); this.context.signal.throwIfAborted();
     if (result.finishReason !== 'stop' || result.toolCalls?.length || !result.text.trim()) {
       throw new Error(`Translation did not finish with complete text (${result.finishReason})`);
@@ -54,15 +92,9 @@ export class ModelOperations {
   private async job(spec: NimiLocalAppScenarioJobSpec, existingId?: string, remember?: (id: string) => Promise<void>, forget?: () => Promise<void>) {
     const { signal, guard } = this.context;
     guard(); signal.throwIfAborted();
-    let existing;
-    if (existingId) {
-      try { existing = (await this.services.ai.scenarioJobs.get(existingId)).job; }
-      catch (error) {
-        const fields = error as { reasonCode?: string; code?: string };
-        if ((fields.reasonCode || fields.code || '').toUpperCase().replaceAll('-', '_') !== 'NOT_FOUND') throw error;
-        if (forget) await forget(); else await this.context.onMissingJob?.(existingId);
-      }
-    }
+    const existing = await retainedJob(id => this.services.ai.scenarioJobs.get(id), existingId, async id => {
+      if (forget) await forget(); else await this.context.onMissingJob?.(id);
+    });
     guard(); signal.throwIfAborted();
     let job = existing && !['failed', 'canceled', 'timeout'].includes(existing.status)
       ? existing : (await this.services.ai.scenarioJobs.submit(spec, { timeoutMs: 300000 })).job;

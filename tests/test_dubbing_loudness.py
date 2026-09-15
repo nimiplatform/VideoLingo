@@ -77,8 +77,8 @@ def test_ffmpeg_failure_is_reported(tmp_path, normalize):
         normalize(tmp_path / 'missing.wav', tmp_path / 'output.wav')
 
 
-def test_final_video_merge_with_real_ffmpeg(tmp_path, monkeypatch):
-    import cv2
+@pytest.mark.parametrize('burn_subtitles', [True, False])
+def test_final_video_merge_with_real_ffmpeg(tmp_path, monkeypatch, burn_subtitles):
     from core import _1_ytdlp, _12_dub_to_vid as merge
 
     if not shutil.which('ffmpeg') or not shutil.which('ffprobe'):
@@ -96,7 +96,7 @@ def test_final_video_merge_with_real_ffmpeg(tmp_path, monkeypatch):
     monkeypatch.setattr(_1_ytdlp, 'is_audio_only_input', lambda: False)
     monkeypatch.setattr(merge, 'find_video_files', lambda: str(source))
     monkeypatch.setattr(merge, '_BACKGROUND_AUDIO_FILE', 'output/background.wav')
-    monkeypatch.setattr(merge, 'load_key', {'burn_subtitles': True, 'ffmpeg_gpu': False}.__getitem__)
+    monkeypatch.setattr(merge, 'load_key', {'burn_subtitles': burn_subtitles, 'ffmpeg_gpu': False}.__getitem__)
     monkeypatch.setattr(merge, 'check_cancel', lambda: None)
     monkeypatch.setattr(merge, 'TRANS_FONT_NAME', 'Arial')
     merge.merge_video_audio()
@@ -109,3 +109,7 @@ def test_final_video_merge_with_real_ffmpeg(tmp_path, monkeypatch):
     assert abs(float(audio['duration']) - 6.0) < 0.1
     assert abs(float(video['duration']) - 6.0) < 0.1
     assert Path('output/normalized_dub.wav').is_file()
+    frame = subprocess.check_output(['ffmpeg', '-nostdin', '-v', 'error', '-ss', '3', '-i', 'output/output_dub.mp4',
+                                     '-frames:v', '1', '-pix_fmt', 'gray', '-f', 'rawvideo', 'pipe:1'])
+    assert len(frame) == 320 * 240
+    assert max(frame) > 100 if burn_subtitles else max(frame) < 5

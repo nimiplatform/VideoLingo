@@ -1,10 +1,46 @@
 # Nimi 开发入口与当前迁移范围
 
-真实 App 为 `ai.nimi.videolingo`，入口是本仓库根目录；`.nimi/local/admission` 只保留早期接口探测，不是产品入口。当前已实际通过项目、受管理媒体、逐词转写、音源分离、原 NLP 规则、全文字幕链和首段参考的整片配音，短样例导出 15 条双语字幕及约 50.64 秒混合视频。逐段/上传参考策略、长视频、YouTube/批量和安装运行仍需分别验收，不能用首段策略替代全部任务范围。
+## 当前完整产品恢复状态
+
+完整 VideoLingo 适配是本轮目标。此前 0.1.1/0.1.2 包只是局部集成候选，构建和 Nimi Access 通过不等于完整产品交付。当前工作树已恢复原单项目操作流程，仍保留真实 Streamlit renderer、SDK/Kit Host 和原 Python 业务算法；不以接口探测工作台代替产品。下列状态覆盖当前已执行范围，后文保留此前阶段记录。
+
+| 原产品能力 | 当前状态 |
+| --- | --- |
+| 导入后一次操作完成字幕链及烧录 | 新项目实际完成，106 词、15 条有效字幕 |
+| 业务参数与字幕长度调节 | 页面 24/90 与配音时长 1.8 秒已传入实际流程；其余配置有相应验证 |
+| 转写前人声增强 | 实际完成：源分离输入 44100 Hz 双声道，ASR 使用对应人声的 16000 Hz 单声道副本 |
+| 一键配音与暂停/恢复 | 实际完成 15 条语音；暂停前两条及 VoiceAsset 在恢复后保持不变 |
+| 播放与导出 | 配音视频 H.264/AAC、50.641995 秒完整解码，App 实际播放；原生字幕 ZIP 六份内容与 managed assets 完全相同 |
+| 归档、恢复、删除配音、清空重选 | 新项目实际操作通过，源/成品归档不变；删除与清空不影响 B/TOS 旧项目 |
+| URL、原 XLSX 批量及完整批次 | 受控 HTTP 及公开 HTTPS 下载通过；独立 XLSX 导入、Done 跳过、参数继承、缓存复用与错误隔离已实际通过。YouTube 示例在固定稳定版下载器后从 App 原失败入口重试成功，旧403记录保留 |
+| 音频单独输入、不烧录 | 独立音频完成字幕及4段配音，实际播放，仅音频/SRT/XLSX；独立视频关闭烧录后完成字幕，无 subtitleVideo。配音视频的烧录开关另有真实 FFmpeg 帧验证 |
+| 长片自动字幕质量 | 未通过；保留零时长及原诊断，不自动填时长或参考答案 |
+| 生产构建与本地安装包 | `29e154c` 的0.1.2已完成官方build、冻结后端检查及pack --production；采用显式交付的本地实验包组合 |
+| Nimi 安装运行 | Desktop已完成0.1.1→0.1.2更新及Access；实际新项目ASR/NLP完成后，翻译因冻结worker编码损坏失败。0.1.3修复后须从该任务继续复验，尚不计为通过 |
+| 正式发布准入 | NOT-VERIFIED；未发布、未提交Registry，本地实验包验收不等于公开包最终验收 |
+
+本次正常单项目验收位于 `.nimi/local/full-app-acceptance/`。新项目 `da30ee95-93e4-4e0a-aca3-e2523b1be411` 已在导出后通过真实清理动作回到 empty；必要产物已保留，旧 B/TOS 未覆盖。启用增强或改变实际 ASR 输入必须重新处理对应输入，不复用原轨结果；相关拒绝/恢复测试覆盖该边界。
+
+当前工具组合已显式升级到 manager 交付的 `dev-193f2888a`（App Tools 0.7.0、SDK 0.14.0、Kit 0.10.0、nimi-coding 0.6.3），固定锁文件；SDK/Kit/native 执行包与 cd1 相同。现有 `.nimi/local/admission` 保持独立身份与 studio-voice 最小 closure，正常升级/sync/check；已按其 Host、preload、renderer bootstrap、public client 与 AIConfig 源码对齐基础接线，没有将参考 UI 复制成目标产品。参考 0.1.0 已正常 build/pack --production；manager 通过真实 Desktop 原生选包、预检、安装和启动确认 installed running / accessAvailable=true / ACTION_EXECUTED。同包参考的安装态 Access 基线通过，不替代目标 App 的业务验收。
+
+已冻结完整0.1.2为 `dist/nimi-app/ai.nimi.videolingo-0.1.2-windows-x86_64.nimiapp`，1071597021 bytes，SHA-256 `589585e68a59e58620a99ec4f6fb2d1bdebe156c842c0da2b59d6473a9df3c4f`。该包包含固定的yt-dlp2026.8.19及完整产品恢复代码；此前同名局部候选不代表此包。2026-09-15，manager通过Desktop正常本地更新完成，安装Job为 `apj_v1_gkiTk7wj4Q6dJ9F3dpXfcACGNCLZdIooMUjC2_QPDew`。该包保持不变，后续修复使用0.1.3。
+
+安装态新项目使用10.966667秒视频，ASR完成28词、NLP完成；翻译阶段实际报 `'utf-8' codec can't encode character '\udc80' in position 111: surrogates not allowed`。以0.1.2的本地冻结payload做一次无推理拒绝检查，确认正常Host传入的“简体中文”在Python配置中变为 `绠\uDC80浣撲腑鏂\uDC87`，中文selectionKey也损坏；标准流错误编码往返会掩盖此损坏，严格UTF-8缓存写入才暴露错误。证据保留在 `.nimi/local/installed-encoding/frozen-probe/config.yaml`。0.1.3改为显式严格UTF-8字节协议，开发与冻结入口复用相同实现；不是丢弃异常字符、修改模型输出或更换模型。原安装失败任务及其ASR/NLP保留，修复后只继续未完成阶段。
+
+
+已交付的冻结 **0.1.1** 候选为隔离提交 `b2f03f8`，基于 `852c127` 的短片功能，只修复冻结 renderer 启动和启动错误可见性。主树已整合此修复并保留后续长视频/批量代码；这些后续代码不在已交付候选中。使用 `dev-72951f582` 完整本地包组合，SDK/Kit/native 执行代码与原 a6 相同，更新包含正常交付的本地安装及 Job 恢复文档。后续主树产包应使用新的候选版本与独立输出目录，不覆盖此 0.1.1 包。
+
+0.1.0 的真实安装已由 manager 完成，但启动后退出。按原 Host 环境诊断已装 backend，得到 `server.port does not work when global.developmentMode is true`；冻结路径不含 `site-packages`，使 Streamlit 的默认值误判为开发模式。0.1.1 在包内入口显式传 `--global.developmentMode=false`，不改 Nimi 信任或权限判断。Host 启动异常使用标准原生对话框展示并可复制详情，不新建日志存储。
+
+旧 `test:packaged-backend` 只走 worker 分支，未覆盖 renderer 健康启动。新版测试补上原 Host 环境与仅端口 argv 的 renderer 检查，禁止额外注入该修复环境变量。安装包用普通 check/build 后再 `pack --target windows-x86_64 --production`，由工具观察原生签名/权限事实；安装态启动与 Access 仍由 Desktop 实际更新后单独验收。
+
+0.1.1 的独立 Windows 构建已完成，增强后的冻结检查实际通过：包内 renderer 健康启动，原 worker 拒绝边界通过，诊断子进程已退出。无额外环境修复注入。manager 已报告实际 user_imported N→N+1 更新 completed（Job `apj_v1_i2gDIzVnU0UplzlAGwtAujhx-cbdJBBKuSdoL0qA_ko`），Desktop 显示已安装 0.1.1；稳定启动与 App Access 仍待其实际检查结果。以下保留 `852c127` / 0.1.0 的历史业务验证范围，不能替代安装态业务验收。
+
+真实 App 为 `ai.nimi.videolingo`，入口是本仓库根目录；`.nimi/local/admission` 只保留早期接口探测，不是产品入口。当前已实际通过项目、受管理媒体、逐词转写、音源分离、原 NLP 规则、全文字幕链和首段参考的整片配音，短样例导出 15 条双语字幕及约 50.64 秒混合视频。逐段/上传参考各有必要来源与真实合成验证；这些策略的完整长片、YouTube/批量和安装运行仍需分别验收。
 
 ## 独立安装与运行
 
-当前开发组合：Node 24、pnpm 10.34.5、Python 3.14；App Tools 0.7.0、SDK 0.14.0、Kit/native 0.10.0、nimi-coding 0.6.3。四个平台归档现均来自 manager 的 `dev-a6d8067d0` 交付。本 App 的 `pnpm-workspace.yaml` 指定完整本地归档，`pnpm-lock.yaml` 固定实际解析；Python 依赖固定在 `requirements-nimi.lock`。不借用主仓或父工作区依赖。以下历史构建/pack 成功属于 `dev-01c151ff1`；升级后的 a6 组合尚未重建生产包。
+当前开发组合：Node 24、pnpm 10.34.5、Python 3.14；App Tools 0.7.0、SDK 0.14.0、Kit/native 0.10.0、nimi-coding 0.6.3。主树四个平台归档均来自 manager 的 `dev-193f2888a` 交付，冻结0.1.1仍使用原729组合。本 App 的 `pnpm-workspace.yaml` 指定完整本地归档，`pnpm-lock.yaml` 固定实际解析；Python依赖固定在 `requirements-nimi.lock`。不借用主仓或父工作区依赖。当前完整0.1.2的生产构建与冻结后端检查已通过；旧阶段的未验证记录以下保留，当前状态以上表为准。
 
 ```powershell
 python -m venv .venv
@@ -112,3 +148,105 @@ Cloud 分支通过 Kit 选择公开列出的 `Deepseek / deepseek-v4-flash`，�
 上传策略通过实际文件输入上传不同来源片段 23.52–30.56 s，7.04 s、24000 Hz 单声道 WAV，337998 bytes；App managed asset 的 SHA-256 与本地文件均为 `0827b93229ef097dedf4f399def578e3c3cb597a0d937f962fbe855b99a4dc59`。输入该段真实原文，创建 VoiceAsset `01M2HT4QJ20VJWZ4E5X5T8EPQQ`，生成 138284 bytes、2.88 s、24000 Hz 单声道配音预览，页面 readyState=4。另一项目请求使用此参考路径时在 Host 被拒绝 `The voice reference belongs to another project`，没有推理。实际参考文件位于 `.nimi/local/reference-acceptance/uploaded-reference.wav`。
 
 修正界面仅查询当前选择模式需要的预置/已有音色列表，避免 Base 的不适用 preset 查询错误干扰 reference 模式。三种策略各自真实来源→VoiceAsset→合成路径已覆盖上述必要范围；仅首段策略完成全片导出。用户上传参考与逐段策略的全片、长视频批量和安装验收仍不外推。
+
+最新 a6 `nimi-app build --target windows-x86_64` 与 `test:packaged-backend` 通过。根 App dev 已正常停止，准备将该组合的 `.nimiapp` 交由 manager 使用 Nimi 的“从本地包导入”路径验证 Runtime 安装、Desktop 启动及产品交互；不直接启动 build 目录，不开启生产 CDP，不发布或提交 Registry。本地导入验收与公开目录发行准入是不同结果。
+
+停止开发 App 的输出还出现过一次 `runtime-service-untrusted` 随后恢复 running；该事件与上述单次 service-unavailable 均保留为未定位暂态，没有放宽信任判断、修复系统服务或宣称自动恢复等于已修复。
+
+## 主树后续长视频与批量接线（尚未真实业务验收）
+
+ASR/分离现在共用精确 NOT_FOUND 分类，失效 Job ID 被记录并清除，用户继续时以原输入重新提交未完成块，已完成块保留。权限、会话错误不重提；无活动时也能停止遗留引用。相关负向测试同时覆盖 ASR 与分离。全局时间偏移与原块边界规则未改。
+
+长片内存热点改为静默搜索窗口解码、参考音频按帧区间读取、配音 PCM 磁盘拼接、RMS 归一化分块两遍扫描。确定性测试确认原静默切点、参考切片字节、PCM16 增益和毫秒间隙与原规则一致；尚未测量真实长片峰值。导出改为 Host 读取 SDK asset stream，写入用户通过原生保存对话框选择的文件；不在 renderer 构建完整 Blob，失败的临时文件不会替换已有导出。
+
+批量使用当前 Projects Host 方法，按独立项目持久化条目顺序、输入身份、阶段错误及结果引用；一次顺序执行，显式暂停/恢复，重启只显示 interrupted，不自动重跑。活动批次占用其项目，已完成条目跳过，失败条目在显式继续时重试。字幕视频使用原烧录规则和 FFprobe 分辨率，未调用旧批量全局 config/output 或旧 ASR 入口。当前提供本地多文件/既有项目的批次编辑；旧 XLSX 任务表与 URL 导入尚未接入此新入口，不宣称完整批量迁移完成。
+
+类型检查、24 项 TS 入口测试（含 Python 确定性测试）与组件/Host 编译通过。真实长素材为 manager 提供的 Tears of Steel 连续影片，必须保留 CC BY 3.0 署名及片尾；原参考字幕仅供人工对照。长片多块/取消恢复/内存峰值、批量真实队列、流式导出原生交互均 NOT-VERIFIED。此主树工作不改变已固定的 852c127 或 0.1.1 安装候选。
+
+## 真实长片批次：部分通过，第三块推理失败
+
+在 Desktop 监督的独立 dev 注册中创建批次 `f8846a7f-6070-4c4a-9121-0d7a1db90671`：Tears of Steel 原片项目 `25fee7cb-fc91-43b5-9188-550f43ec9a8a`、明确不可解码的 MP4 项目 `43248e79-f8dd-41d3-bbf2-e1b4218be0aa`、复用已有短片项目 `b833eecf-8f23-465e-8a92-efe60a4bf924`。批次条目单独持久化，顺序/状态头不携带全部输出数据，避免超过 SDK 单 JSON 文档容量。没有调用旧 batch 全局配置路径。
+
+实际分块 offset 为 0、240.649、480.649、725.161 s；duration 为 240.649、240、244.512、8.9320625 s。末端 734.0930625 s 与原 MP3 音轨 734.093061 s 一致；视频本身为 734.166667 s，不把容器中视频多出的约 73.6 ms 当作音频丢失。首块保存后在第二块运行中暂停，批次 paused、后续条目 queued；显式继续从第二块开始，再于实际 running Job 中正常停止 dev。新 Host 项目/批次为 interrupted，首块保留，没有自动派发；显式恢复后第二块完成。
+
+第三块 ASR Job `01M2HYSBJ18KMAX87S87BFWQCM` 返回 `ai-local-execution-inference-failed` / `local inference failed`，trace `01M2HYSBJ18KMAX87S87J8GCCY`，未重试或改变切分。manager 从 Runtime 日志定位到识别语言不在已捕获 aligner 支持范围，继续检查平台结果；没有以请求 en 强改未知识别语言。原受管 `chunks/2.wav` 已通过公开 SDK stream 完整导出 `.nimi/local/asr-diagnostic/chunk-2.wav`（7824428 bytes，SHA-256 `c55f7a3e63933de23a465cdd68384d0d6d86590231e31d764e01f7c3f9ad2006`），不重切、不转码、不替代正式复验。前两块保持保存；无效文件随后准确失败，已有短片条目继续 completed，批次 completed-with-errors，未污染其他项目。
+
+已保存块0/1分别为 en/160词、en/134词。第一处跨块时间从 240.4 s 到下一块全局 241.529 s，无倒退，偏移仅加一次。但存在语义/对齐质量限制：“Be tender to her”附近识别为“Be, be on the tour”；块1尾部多词 start=end=局部182.08 s，并有重复“Out of time”。没有删词或估时间，不能称长片语义/逐词对齐质量通过；全片字幕、分离与配音还未运行。
+
+只对本 App Host/Streamlit 进程树进行本次 2 秒采样，排除 Runtime/模型进程：第一阶段143次样本，观测合计工作集峰值1543872512 bytes；重启后97次样本，峰值1263149056 bytes。结果在 `.nimi/local/long-acceptance/memory-*-phase.json`。这证明此次已执行上传/准备/前几块转写的 App 范围，不是机器总峰值，也未覆盖尚未运行的长片拼接/归一化。原片 CC BY 3.0 来源说明保留在该目录 README。
+
+## MOV 兼容预览
+
+公开 Kit 文档确认 video/quicktime 不受管预览 API 接纳；原调用实际返回 invalid-payload / use_typed_local_app_asset_media。App 保留原 MOV 处理输入，用 FFmpeg 生成真实 MP4：先探测编解码器，H.264/YUV420p 才复用视频，其他编码转 H.264，音轨转换 AAC，并验证输出编解码器/视频起点/时长。结果按原 sourceHash 缓存在项目 managed assets；失败只写预览状态，不改 ASR 结果。
+
+本长片实际 preview 完成，视频复用、1280×534、734.166667 s，与原视频一致。同一 Kit URL 加载到 readyState=4，实际播放240.649→241.110 s、解码帧9→20，拖动480.649 s成功，无媒体错误。截图在 `.nimi/local/long-acceptance/compatible-preview.png`；第二次准备请求复用相同 runId/assetPath，没有再转码。原源 SHA 与前两块 ASR 保留。非 H.264 MOV 的真实确定性测试也验证会转码而非盲目 copy；这些测试不替代长片 AI 验收。
+
+## 模型未报告语言的消费边界
+
+manager 对失败第三块作原输入/模型诊断，发现有实际英文文本但模型未报告语言。App 现将 `sourceLanguage`（显式用户选择或可用模型报告）与 `detectedLanguage` / `reportedLanguages` / `unreportedLanguageChunks` 分开；typed chunk result 中空 `language` 保持为空，不伪装成“检测到 en”。只有显式 source-language hint 可在空报告时用于后续 NLP/业务配置；auto 缺报告、未支持的已报告语言仍失败。原逐词时间只来自真实 alignment，不重新估算。
+
+针对性测试覆盖空报告+显式 en、auto 缺报告、未支持报告、混合报告及最终持久结果的来源区分，类型检查和24项入口测试通过。`dev-1c64ec080` 完整四包已显式安装并同步/check，通过随包 SDK README 核对了相同语义；等待 Runtime/ASR 环境就绪通知。这部分代码尚未以第三块正式调用复验，前两块与失败输入仍保留，dev 已按更新协调正常停止。冻结0.1.1包不变。
+
+## 上游同步及长片翻译恢复（dev-cd1ebd388）
+
+按用户要求以 `git pull --rebase --autostash` 同步至 `origin/main` 的 `11048cc`，重放 16 个本地提交并恢复未提交工作。冲突保留上游 FFmpeg DLL 初始化、32 kHz / 128 kbps 提取、峰值受限音量与 AAC 192k；同时保留任务按需导入、分块媒体处理与后台 FFmpeg 无 stdin。音频专项 23 项通过，1 项可选 PyYAML 配置检查跳过；类型检查、25 项 App 入口测试及官方 sync 后 check 通过。原冻结安装包未修改，本次未重新生产构建。
+
+显式选用 manager 交付的 cd1 四包并冻结 lockfile；SDK 修复失败事件 trace 传播。App 沿原 gpt_log 在每次成功模型调用后持久缓存，失败记录原请求、业务块索引及同一次公开 stream 事件，不重放请求来收集诊断。Desktop 监督的真实 renderer 对长片项目 `25fee7cb-fc91-43b5-9188-550f43ec9a8a` 仅恢复一次翻译，原 ASR / NLP / meaning / terminology 保留，原 Deepseek-v4-flash 配置、prompt 和参数不变。实际完成 5/5，忠实翻译和润色缓存各 9 条。本次未出现 AI_OUTPUT_INVALID，首次错误根因仍未定位，不宣称修复。
+
+本次实际导出的 85 条字幕在 `.nimi/local/long-acceptance/translation/`。其中 28、29、30、32、35、76、77、78 为零持续时间，保留实际 ASR 端点；还有原文错识别 `Be, be on the tour` 导致“去 去巡演”，以及上下文误译 `We're done` 为“完成了”。字幕生成完成不等于字幕质量通过，未改写时间或以参考字幕冒充识别。长片整片配音、完整批次、当前主线生产构建与安装态 Access / 业务仍 NOT-VERIFIED；正式发布准入未执行。
+
+## 字幕校对与回流
+
+有界审查 `origin/main` 的实际 `st.py`、`core/st_utils`、`_6_gen_sub.py` 与 `_8_1_audio_task.py`：原界面仅提供媒体导入、SRT 下载及归档，没有内嵌字幕编辑或 SRT 上传入口。原下游读取可写 `output` 文件，外部修订可以通过显示用 SRT 和配音用 SRT 回流。SDK 管理存储接入后，这个交接现由字幕校对面板承接；不创建通用时间轴编辑器。
+
+翻译完成后选择“显示与烧录字幕”或“配音输入字幕”，分别校对原文、译文和 `HH:MM:SS,mmm` 起止时间，也可导入外部编辑的 UTF-8 SRT（每文件最多 256 KiB）。两种用途保留原先各自分句，不互相覆盖。可保存格式可解析但时间/配对尚未修正的草稿；草稿始终能另存为 `draft-*.srt` 继续外部校对。成品导出、烧录、配音由 Host 对实际使用的字幕组检查正持续时间、原译配对、重叠/顺序和媒体范围。保存用户版本不会修改原 ASR 或模型文件；新的字幕版本使此前衍生视频/配音失效，其他项目不变。并发版本变更、未停止配音 Job 或活动批次会拒绝覆盖。
+
+真实 Desktop-supervised 会话已读取长片原稿，经实际文件输入导入相同原文草稿并保存为独立用户版本 `9967e0a4…`。没有修改任何字幕文字/时间；该导入仅将原文显示 SRT 的 CRLF 规范为 LF，另外三份原稿保持一致。原 ASR 4 块、NLP 和模型 translation key 均保留。8 条零时长在显示/配音的原译四份文件中共报告 32 个位置，真实页面请求烧录在 Host 被拒绝，未执行 FFmpeg 或 AI。原生草稿导出已交 manager 按 owner 支持路径验证；结果未返回前仍为 NOT-VERIFIED。真实人工修正后的长片成品与配音也仍 NOT-VERIFIED。
+
+类型检查、30 项入口测试和官方 check 通过。相关测试验证草稿出口、不更改原端点、存储失败不激活半成品、失效版本与项目隔离。真实原稿额外发现多空行被 SRT parser 误拒，已修正并重跑受影响测试；原文件若确有格式问题，仍保留原文可供校对。没有重跑 AI 为首次 provider 错误寻找新证据。
+
+校对正向功能测试另使用已有短片 B 的有效原字幕，通过真实 file input 保存用户版本 `69bb8633…`（不修改字词/时间），生成绑定此版本的烧录视频。SDK 流读回文件 `.nimi/local/subtitle-review/short-user-version.mp4`，1842546 bytes、H.264 640×480 / AAC、50.642993 s，完整 FFmpeg 解码无错误；此操作未重跑 ASR/NLP/翻译/TTS。长片成品导出及配音在精确 App renderer 通过公开 Kit 固定 Host 命令实际被 `Subtitle proofreading required` 拒绝；配音先校验字幕，再要求源分离，以免已知无效字幕诱发不必要的前置 AI。原生草稿保存对话框已交 manager，仍单独等待落盘结果。
+
+## 原生草稿导出与单块 ASR 质量对照
+
+manager 经原生保存对话框导出的 `.nimi/local/subtitle-review/exported-draft-src.srt` 与本次实际导入的原文草稿逐字节相等：4722 bytes、无 CRLF。该原生落盘步骤已通过，不重复打开对话框。
+
+由 Desktop 正式配置的 Qwen3 ASR 1.7B 资源对原第 0 块仅提交一次：Job `01M2J4JG6TH06MQK3BMJ8QYVPS`、trace `01M2J4JG6TH06MQK3BMM5FQBE7`。输入为原 SDK asset 的 7700812 bytes、240.649 s，SHA-256 `3b763598d1d7ff3b41002c642080d08bc693a52f94fd9f7fe2776083bd179a22`，en hint / timestamps=true，无重切或重编码。结果独立存于 SDK `quality/asr-1.7b-chunk0-result.json` 和 `.nimi/local/asr-quality-1.7b/`，原项目 ASR/翻译不变。
+
+1.7B 返回 en/171 词，原 0.6B 为160词；零时长词由15增至22（不同于字幕条数）。尾部“be on the tour”改善成“be tender to her”，但末词仍为零时长；Tom 228.32 s仍零时长，新增 Whatever/Tom/We're/done 全挤在50.08 s，giant robotic claws 被识别为 glass。提供的参考字幕只用于评估，未写回。该对照未通过自动字幕质量验收，manager 已通过 Desktop 恢复原0.6B正式选择；不做整片替换或继续盲目对照。
+
+## URL 与原任务表接入（真实入口待验）
+
+“从链接下载”保留原 yt-dlp 的分辨率、代理、Netscape Cookie 文件和文件命名规则；工具使用锁定版本，下载时不再调用 pip 自动升级。下载结果经 Host 工作目录检查及 SDK asset 流写入，完成后才成为项目输入，不会启动 AI。停止/会话失效取消工作进程和正在写入的源流；未完成下载在原项目保留设置，明确重试。
+
+批次可导入原五列 XLSX，保留源/目标语言、Dubbing 和 Status，默认选择空/Error 行。表中 Done 不成为 Nimi 完成证据；用户显式选择每行关联项目、导入对应本地媒体或将URL下载到独立项目，再加入现有队列。此过程不解析父目录路径、不执行公式、不运行旧供应商AI。空目标语言在预览中显示简体中文默认值；同媒体多任务使用各自项目。原AI队列及取消/恢复逻辑继续复用。
+
+类型检查、31项App入口测试、9项原下载代理测试及官方check通过。表格测试使用实际XLSX文件验证列、状态、路径、公式和Dubbing边界；下载尚未以真实Nimi入口运行。开发Host已停止，等待manager安装来源身份修复及Runtime恢复，再进行真实URL/表格验收。当前生产重建、正式发布与安装态业务仍不由这些检查证明。
+
+## URL / XLSX 实际验证及选材纠正
+
+正常 App 的 URL 入口把受控 HTTP demo.mp4 写入 SDK 管理存储，1385961 bytes、SHA-256 与本仓原视频一致。慢速同内容传输在实际“停止下载”后为 canceled、source 不存在、input assets 为零；同项目同 URL 明确重试后 ready，完整字节与来源一致。这只证明受控 HTTP 媒体流转，不证明外部 YouTube 已可用。界面已修正下载完成后媒体项目列表未更新及重试遗留停止提示的问题。
+
+原五列 XLSX 已从真实文件输入导入，空状态行选中、Done 行跳过，逐行关联媒体并保存/执行批次。该次我错误地把表格 en 行关联到旧 B（其实际 hint 原为空/自动识别），所以触发了符合新输入规则的实际重转写及后续流程，不能计作缓存复用。B 行完成，invalid 行在 FFmpeg 准备阶段失败；未把失败行冒充成功。后续验证一律使用独立项目。
+
+核对得到：新 B 原文完全相同，words.csv 与原实际导出逐字节一致；全部106个词/起止时间/报告语言也与原导出一致。原 source/NLP/翻译/用户修订/视频等25个路径仍存在，随后通过当前 App 的公开 SDK 恢复确实捕获的原项目元数据与引用，updatedAt记录恢复时刻。新调用、before/after、新 ASR 和批次结果均保留于 `.nimi/local/full-app-acceptance/`，不捏造旧推理、不抹掉重跑，不声称未比对的 Excel 包装字节完全还原。当前缓存复用声明仍待独立项目验证。
+
+停止开发入口时实际返回 runtime-service-unavailable，已知Host48500随后只读确认不存在；未标监督清理成功，未kill或操作Runtime。平台恢复由manager处理，期间无活动AI。
+
+## 独立分支最终开发验收
+
+独立音频项目 `afa42f67-9af7-4598-96be-882a77d1d0c1` 使用从原 demo 提取的真实10.96秒 WAV，正常界面一键完成28词转写/字幕；烧录选项禁用，未生成字幕视频。随后选择正常列出的既有 VoiceAsset，完成4段真实合成及背景混合，没有新增音色，也没有视频输出。实际 WAV 为 PCM16 / 44100 Hz双声道 / 10.959977秒，App播放1→1.963594秒、readyState=4。人工试听由manager统一询问，未得到答复前不宣称主观音质已验收。
+
+公开 HTTPS：正常 URL 入口从本 fork 的 raw.githubusercontent.com 原视频地址下载到独立项目 `b289d5c4-f07a-4952-8e30-ce93f0088cba`，1385961 bytes / SHA-256与本地demo一致。此独立视频随后关闭烧录，一键字幕完成，未产生 subtitleVideo。原任务表示例 YouTube 地址另在独立项目 `d3054ee1-ef32-42bb-b7d9-d07a0fc6e74b` 实际尝试360p，返回 `HTTP Error 403: Forbidden`，未添加规避或启动AI；YouTube成功下载仍 NOT-VERIFIED，不扩成构建阻塞。
+
+独立任务表 `batch-independent.xlsx` 通过实际页面文件输入导入。空源/目标语言继承独立音频项目已核对的en/简体中文，Done行未入队。批次 `96f3eb93-fef6-4b5e-b6cd-ab759d602971` 中音频行完成，独立invalid项目 `6e3e1f82-3fac-4d46-bed1-ee096113bfce` 仅在FFmpeg准备阶段失败。音频项目runId、chunks、translation及dubbing对象前后完全一致，本次缓存复用实际通过；不改写之前B选材失误的分类。结果与产物在 `.nimi/local/full-app-acceptance/`。
+
+当前193工具包合并了正常Desktop停止退出码修正，SDK/Kit/native与4a/af保持同一执行包；未因此重跑既有AI。新的本地0.1.2候选将覆盖完整业务恢复代码，原4aa2a96局部0.1.2包已另存 `.nimi/local/partial-4aa2a96/`，冻结0.1.1和852产物不动。当前工作树的安装态业务仍待manager真实验收，正式发布未进行。
+
+YouTube 的一次等价正常调用核对使用同一 App `.venv`、`workerEnvironment` 和360p下载选项，仍返回 HTTP403 / exit1。verbose实际识别到 yt-dlp2026.06.09、yt_dlp_ejs0.8.0、Deno2.8.1，以及本App的FFmpeg/FFprobe；没有缺JS runtime的诊断。超过90天的版本提示已记录，但不足以归因为版本或网站限制。日志位于 `.nimi/local/full-app-acceptance/youtube-normal/download.log`。此核心URL路径未通过，原因未定位；不采用绕过、不把它扩大为独立构建阻塞。
+
+## 固定稳定版下载器后的原入口复验
+
+在当前候选构建结束后，依据 [yt-dlp 2026.08.19 官方发布说明](https://github.com/yt-dlp/yt-dlp/releases/tag/2026.08.19)，于本 App `.nimi/local/ytdlp-20260819` 独立环境固定2026.8.19及其声明的EJS0.8.0，以同一参数对同一URL只重测一次，成功下载并合并视频。其它网络库沿主lock固定，Deno2.8.1满足其>=2.6.6要求。随后仅固定主App的yt-dlp2026.8.19，未启用自动更新器、nightly或额外规避参数。
+
+正常监督App中选择原失败的独立项目d3054ee1-ef32-42bb-b7d9-d07a0fc6e74b，保持同URL与360p，从“下载或重试”入口成功到ready：managed MP4 22223529 bytes，SHA-256 b675b676e79e4b4168c22ad5c3ee93919b4b025aa6c4845a553ee8a42fb2cc20，页面媒体readyState=4、duration=432.661s。没有AI调用。原403是历史真实失败；现在只把这个原失败步骤在固定组合下标为通过，不外推所有网站/链接，也不凭发布说明断定每个403的原因。独立与App记录在 `.nimi/local/full-app-acceptance/youtube-20260819/` 和 `youtube-app-project.json`。

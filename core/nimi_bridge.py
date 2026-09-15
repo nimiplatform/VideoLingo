@@ -5,6 +5,7 @@ from queue import Queue
 import sys
 import threading
 import uuid
+from core.nimi_protocol import write_frame
 
 
 class NimiRequestError(RuntimeError):
@@ -45,7 +46,7 @@ def _start_receiver():
                 buffer += chunk
                 while b"\n" in buffer:
                     line, buffer = buffer.split(b"\n", 1)
-                    response = json.loads(line)
+                    response = json.loads(line.decode('utf-8'))
                     with _lock:
                         queue = _pending.get(response.get("id"))
                     if queue is not None:
@@ -72,8 +73,7 @@ def request_model(kind, payload):
         # Starting it earlier can deadlock NumPy's native module initialization.
         _start_receiver()
         with _write_lock:
-            sys.__stdout__.write(json.dumps({"type": "model-request", "id": request_id, "kind": kind, "input": payload}, ensure_ascii=False) + "\n")
-            sys.__stdout__.flush()
+            write_frame({"type": "model-request", "id": request_id, "kind": kind, "input": payload})
         response = queue.get()
         if "error" in response:
             raise NimiRequestError(response["error"])

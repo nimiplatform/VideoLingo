@@ -8,6 +8,8 @@ On Windows the project must have its Electron binary installed. If the launcher 
 
 Verify the real output the user needs: a cited research result, a correctly indexed document, or a playable/exported media artifact. Check cancellation, reconnect or account change when that behavior is affected. Tests and mocks can establish a contract; they cannot replace actual AI or App acceptance.
 
+For local installed-App acceptance with complete local npm tarballs, run ordinary `check` and `build --target <target>`, then `pack --target <target> --production` on the matching host. The pack flag observes actual native signature and execution permissions; it neither requires registry dependency resolutions nor publishes. Plain `pack` produces a development archive that Runtime rejects for installation. Use Desktop's Apps → Add App → Import local package, review the actual preview, install and launch that source. Keep this separate from public-release `check --production` and `build --production`.
+
 For a declared release target, verify Catalog discovery/download/install, exact Host launch, current Access, real business use and uninstall on an ordinary machine without the source workspace or development runtimes. Local-package import proves only that separate source path. Keep missing external services visible.
 
 With two separately admitted versions, verify N to N+1 and the promised data retention. Reuse existing Runtime failure tests for preservation of the old package; if a normal real failure is observed, retry the same N/N+1 after confirming N remains available. Do not manufacture N+2, a downgrade path or a new fault-injection service.

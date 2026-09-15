@@ -113,9 +113,8 @@ def test_extracted_audio_keeps_high_band(tmp_path):
 # ---------------------------------------------------------------------------
 
 def normalizer():
-    from pydub import AudioSegment
-    return load('core/asr_backend/audio_preprocess.py', {'normalize_audio_volume'},
-                {'AudioSegment': AudioSegment, 'rprint': lambda *args: None, 'math': math})['normalize_audio_volume']
+    from core.asr_backend.audio_preprocess import normalize_audio_volume
+    return normalize_audio_volume
 
 
 def test_normalize_limits_gain_to_peak_headroom(tmp_path):

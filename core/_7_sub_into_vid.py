@@ -1,7 +1,6 @@
 import os, subprocess, time
 from core._1_ytdlp import find_video_files
-import cv2
-import numpy as np
+import json
 import platform
 from core.utils import *
 
@@ -51,29 +50,18 @@ def merge_subtitles_to_video():
 
     # Check resolution
     if not load_key("burn_subtitles"):
-        rprint("[bold yellow]Warning: A 0-second black video will be generated as a placeholder as subtitles are not burned in.[/bold yellow]")
-
-        # Create a black frame
-        frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(OUTPUT_VIDEO, fourcc, 1, (1920, 1080))
-        out.write(frame)
-        out.release()
-
-        rprint("[bold green]Placeholder video has been generated.[/bold green]")
+        subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-y', '-i', video_file, '-c', 'copy', OUTPUT_VIDEO], check=True)
         return
 
     if not os.path.exists(SRC_SRT) or not os.path.exists(TRANS_SRT):
-        rprint("Subtitle files not found in the 'output' directory.")
-        exit(1)
+        raise FileNotFoundError("Subtitle files not found in the 'output' directory")
 
-    video = cv2.VideoCapture(video_file)
-    TARGET_WIDTH = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-    TARGET_HEIGHT = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    video.release()
+    result = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'json', video_file], check=True, capture_output=True, text=True)
+    dimensions = json.loads(result.stdout)['streams'][0]
+    TARGET_WIDTH, TARGET_HEIGHT = dimensions['width'], dimensions['height']
     rprint(f"[bold green]Video resolution: {TARGET_WIDTH}x{TARGET_HEIGHT}[/bold green]")
     ffmpeg_cmd = [
-        'ffmpeg', '-i', video_file,
+        'ffmpeg', '-nostdin', '-i', video_file,
         '-vf', (
             f"scale={TARGET_WIDTH}:{TARGET_HEIGHT}:force_original_aspect_ratio=decrease,"
             f"pad={TARGET_WIDTH}:{TARGET_HEIGHT}:(ow-iw)/2:(oh-ih)/2,"
@@ -83,7 +71,7 @@ def merge_subtitles_to_video():
             f"subtitles={TRANS_SRT}:force_style='FontSize={TRANS_FONT_SIZE},FontName={TRANS_FONT_NAME},"
             f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
             f"BackColour={TRANS_BACK_COLOR},Alignment=2,MarginV=27,BorderStyle=4'"
-        ).encode('utf-8'),
+        ),
     ]
 
     ffmpeg_gpu = load_key("ffmpeg_gpu")
@@ -94,7 +82,7 @@ def merge_subtitles_to_video():
 
     rprint("🎬 Start merging subtitles to video...")
     start_time = time.time()
-    process = subprocess.Popen(ffmpeg_cmd)
+    process = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.DEVNULL)
 
     try:
         process.wait()

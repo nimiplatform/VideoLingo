@@ -12,9 +12,8 @@ def dub_video(request, workspace):
     yaml = YAML()
     with open('config.yaml', encoding='utf-8') as file:
         settings = yaml.load(file)
-    settings.update({'max_workers': 4, 'speed_factor': {'min': 1, 'accept': 1.2, 'max': 1.4},
-                     'min_subtitle_duration': 2.5, 'min_trim_duration': 3.5, 'tolerance': 1.5,
-                     'burn_subtitles': request['burnSubtitles'], 'ffmpeg_gpu': False,
+    settings.update(request['businessSettings'])
+    settings.update({'burn_subtitles': request['burnSubtitles'],
                      'allowed_video_formats': ['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'webm'],
                      'allowed_audio_formats': ['wav', 'mp3', 'flac', 'm4a']})
     with open('config.yaml', 'w', encoding='utf-8') as file:

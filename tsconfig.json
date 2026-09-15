@@ -9,6 +9,7 @@
     "skipLibCheck": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
     "types": ["node", "react", "react-dom"]
   },
   "include": ["src-electron/**/*.ts", "src-component/**/*.ts", "src-component/**/*.tsx", "tests/nimi-*.test.ts"]

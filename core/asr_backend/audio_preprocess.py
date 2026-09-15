@@ -1,6 +1,11 @@
 import os, subprocess
 import pandas as pd
 import math
+import io
+import tempfile
+from pathlib import Path
+import numpy as np
+import soundfile as sf
 from typing import Dict, List, Tuple
 from pydub import AudioSegment
 from core.utils import *
@@ -11,11 +16,11 @@ from pydub.utils import mediainfo
 from rich import print as rprint
 
 
-def audio_slice_wav(path, start=None, end=None, sample_rate=16000):
+def audio_slice_wav(path, start=None, end=None, sample_rate=16000, channels=1):
     """Decode only the requested interval to mono PCM WAV for cloud ASR."""
     if any(value is not None and (not math.isfinite(value) or value < 0) for value in (start, end)):
         raise ValueError('Audio interval must contain finite non-negative times')
-    cmd = ['ffmpeg', '-v', 'error']
+    cmd = ['ffmpeg', '-nostdin', '-v', 'error']
     if start is not None:
         cmd += ['-ss', str(start)]
     cmd += ['-i', str(path)]
@@ -24,7 +29,7 @@ def audio_slice_wav(path, start=None, end=None, sample_rate=16000):
         if duration <= 0:
             raise ValueError('Audio interval must have positive duration')
         cmd += ['-t', str(duration)]
-    cmd += ['-ac', '1', '-ar', str(sample_rate), '-c:a', 'pcm_s16le', '-f', 'wav', 'pipe:1']
+    cmd += ['-ac', str(channels), '-ar', str(sample_rate), '-c:a', 'pcm_s16le', '-f', 'wav', 'pipe:1']
     return subprocess.run(cmd, check=True, capture_output=True).stdout
 
 def _ffmpeg_has_encoder(encoder_name: str) -> bool:
@@ -77,20 +82,35 @@ def _raw_audio_command(input_file: str):
     ]
 
 def normalize_audio_volume(audio_path, output_path, target_db = -20.0, format = "wav", peak_ceiling_db = -1.0):
-    audio = AudioSegment.from_file(audio_path)
-    change_in_dBFS = target_db - audio.dBFS
-    # pydub applies gain on integer samples, so a quiet track with sharp peaks
-    # (speech separated by long silences) would clip. Cap the gain so peaks stay
-    # under the ceiling; attenuation is never limited.
-    headroom = peak_ceiling_db - audio.max_dBFS
-    if not math.isfinite(change_in_dBFS) or not math.isfinite(headroom):
-        change_in_dBFS = 0.0
-    elif change_in_dBFS > headroom:
-        rprint(f"[yellow]⚠️ Gain limited to {headroom:+.1f}dB (wanted {change_in_dBFS:+.1f}dB) to keep peaks under {peak_ceiling_db:.1f}dBFS[/yellow]")
-        change_in_dBFS = headroom
-    normalized_audio = audio.apply_gain(change_in_dBFS)
-    normalized_audio.export(output_path, format=format)
-    rprint(f"[green]✅ Audio normalized from {audio.dBFS:.1f}dB to {audio.dBFS + change_in_dBFS:.1f}dB[/green]")
+    # Match the original PCM16 RMS/gain rule with two bounded passes on disk.
+    with tempfile.TemporaryDirectory(prefix='videolingo-normalize-') as directory:
+        decoded, normalized = Path(directory) / 'source.wav', Path(directory) / 'normalized.wav'
+        subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-y', '-i', str(audio_path), '-vn', '-c:a', 'pcm_s16le', '-rf64', 'auto', str(decoded)], check=True)
+        total, samples, peak = 0, 0, 0
+        with sf.SoundFile(decoded) as reader:
+            for block in reader.blocks(blocksize=65536, dtype='int16', always_2d=True):
+                wide = block.astype(np.int64)
+                total += int(np.sum(wide * wide)); samples += wide.size
+                peak = max(peak, int(np.max(np.abs(wide))))
+        if not samples:
+            raise ValueError('Cannot normalize empty audio')
+        rms = math.isqrt(total // samples)
+        dbfs = 20 * math.log10(rms / 32768) if rms else -math.inf
+        peak_dbfs = 20 * math.log10(peak / 32768) if peak else -math.inf
+        change_db = target_db - dbfs
+        headroom = peak_ceiling_db - peak_dbfs
+        change_db = min(change_db, headroom) if math.isfinite(change_db) and math.isfinite(headroom) else 0.0
+        gain = 10 ** (change_db / 20)
+        with sf.SoundFile(decoded) as reader, sf.SoundFile(normalized, 'w', samplerate=reader.samplerate,
+                channels=reader.channels, format='RF64', subtype='PCM_16') as writer:
+            for block in reader.blocks(blocksize=65536, dtype='int16', always_2d=True):
+                writer.write(np.clip(np.floor(block.astype(np.float64) * gain), -32768, 32767).astype(np.int16))
+        if format == 'wav':
+            import shutil
+            shutil.copyfile(normalized, output_path)
+        else:
+            subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-y', '-i', str(normalized), '-f', format, str(output_path)], check=True)
+    rprint(f"[green]✅ Audio normalized from {dbfs:.1f}dB to {dbfs + change_db:.1f}dB[/green]")
     return output_path
 
 def convert_video_to_audio(video_file: str):
@@ -126,7 +146,6 @@ def get_audio_duration(audio_file: str) -> float:
 def split_audio(audio_file: str, target_len: float = 30*60, win: float = 60) -> List[Tuple[float, float]]:
     ## 在 [target_len-win, target_len+win] 区间内用 pydub 检测静默，切分音频
     rprint(f"[blue]🎙️ Starting audio segmentation {audio_file} {target_len} {win}[/blue]")
-    audio = AudioSegment.from_file(audio_file)
     duration = float(mediainfo(audio_file)["duration"])
     if duration <= target_len + win:
         return [(0, duration)]
@@ -141,7 +160,12 @@ def split_audio(audio_file: str, target_len: float = 30*60, win: float = 60) -> 
         ws, we = int((threshold - win) * 1000), int((threshold + win) * 1000)
         
         # 获取完整的静默区域
-        silence_regions = detect_silence(audio[ws:we], min_silence_len=int(safe_margin*1000), silence_thresh=-30)
+        # Decode only this search window; keep the original silence detector/rules.
+        decoded = subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-ss', str(ws / 1000), '-i', str(audio_file),
+                                  '-t', str(min(we / 1000, duration) - ws / 1000), '-c:a', 'pcm_s16le', '-f', 'wav', 'pipe:1'],
+                                 check=True, capture_output=True).stdout
+        window = AudioSegment.from_file(io.BytesIO(decoded), format='wav')
+        silence_regions = detect_silence(window, min_silence_len=int(safe_margin*1000), silence_thresh=-30)
         silence_regions = [(s/1000 + (threshold - win), e/1000 + (threshold - win)) for s, e in silence_regions]
         # 筛选长度足够（至少1秒）且位置适合的静默区域
         valid_regions = [

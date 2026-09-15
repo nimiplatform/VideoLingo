@@ -12,5 +12,7 @@ else:
     port = sys.argv[1] if len(sys.argv) > 1 else "1467"
     from streamlit.web import cli
     sys.argv = ["streamlit", "run", str(root / "st.py"), "--server.address=127.0.0.1", f"--server.port={port}",
+                "--global.developmentMode=false",
+                "--client.toolbarMode=viewer",
                 "--server.headless=true", "--browser.gatherUsageStats=false"]
     raise SystemExit(cli.main())

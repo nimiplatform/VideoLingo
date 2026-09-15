@@ -18,18 +18,12 @@ def sanitize_filename(filename):
     # Use default name if filename is empty
     return filename if filename else 'video'
 
-def update_ytdlp():
-    try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "yt-dlp"])
-        if 'yt_dlp' in sys.modules:
-            del sys.modules['yt_dlp']
-        rprint("[green]yt-dlp updated[/green]")
-    except subprocess.CalledProcessError as e:
-        rprint("[yellow]Warning: Failed to update yt-dlp: {e}[/yellow]")
+def load_ytdlp():
+    # Tool versions are supplied by the normal installation / packaged build.
     from yt_dlp import YoutubeDL
     return YoutubeDL
 
-def download_video_ytdlp(url, save_path='output', resolution='1080'):
+def download_video_ytdlp(url, save_path='output', resolution='1080', max_bytes=4 * 1024 ** 3):
     os.makedirs(save_path, exist_ok=True)
     ydl_opts = {
         'format': 'bestvideo+bestaudio/best' if resolution == 'best' else f'bestvideo[height<={resolution}]+bestaudio/best[height<={resolution}]',
@@ -37,6 +31,7 @@ def download_video_ytdlp(url, save_path='output', resolution='1080'):
         'noplaylist': True,
         'writethumbnail': True,
         'merge_output_format': 'mp4',
+        'max_filesize': max_bytes,
         'postprocessors': [{'key': 'FFmpegThumbnailsConvertor', 'format': 'jpg'}],
     }
 
@@ -54,8 +49,7 @@ def download_video_ytdlp(url, save_path='output', resolution='1080'):
     if os.path.exists(cookies_path):
         ydl_opts["cookiefile"] = str(cookies_path)
 
-    # Get YoutubeDL class after updating
-    YoutubeDL = update_ytdlp()
+    YoutubeDL = load_ytdlp()
     with YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
     

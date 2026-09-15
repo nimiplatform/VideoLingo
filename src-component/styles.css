@@ -13,3 +13,8 @@
 .vl-error { color: #8a1e24; background: #fff1f1; border-radius: 6px; padding: 10px; overflow-wrap: anywhere; }
 .vl-notice { background: #eef5fa; padding: 10px; border-radius: 6px; }
 .vl-config { border: 1px solid #dce3e7; border-radius: 8px; padding: 16px; margin: 16px 0; }
+.vl-subtitle-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.vl-subtitle-pair textarea { font: 13px/1.5 ui-monospace, monospace; margin: 8px 0; }
+.vl-settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 14px 0; }
+.vl-settings-grid label { display: grid; gap: 4px; }
+@media (max-width: 700px) { .vl-subtitle-pair { grid-template-columns: 1fr; } }

@@ -1,4 +1,5 @@
 import os
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -89,6 +90,47 @@ class ModelBoundaryTests(unittest.TestCase):
                     self.assertEqual(request.call_args.args[1]['referenceText'], 'first source')
                     self.assertTrue(request.call_args.args[1]['referencePath'].endswith('1.wav'))
                 self.assertFalse(Path('voice.wav').exists())
+            finally:
+                os.chdir(previous)
+
+    def test_invalid_json_is_not_repaired_or_retried(self):
+        from core.utils.ask_gpt import ask_gpt
+        previous = Path.cwd()
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                os.chdir(directory)
+                Path('config.yaml').write_text('nimi_text_cache_key: negative-json-check\n', encoding='utf-8')
+                with patch('core.utils.ask_gpt.request_model', return_value={'finishReason': 'stop', 'text': '```json\n{"x":1}\n```'}) as request:
+                    with self.assertRaises(NimiRequestError):
+                        ask_gpt('Request', resp_type='json')
+                    self.assertEqual(request.call_count, 1)
+                self.assertFalse(Path('output/gpt_log').exists())
+            finally:
+                os.chdir(previous)
+
+    def test_failed_request_keeps_exact_prompt_and_error_without_success_cache(self):
+        from core.utils.ask_gpt import ask_gpt
+        previous = Path.cwd()
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                os.chdir(directory)
+                Path('config.yaml').write_text('nimi_text_cache_key: test-config\nnimi_persist_text_cache: true\n', encoding='utf-8')
+                requests = []
+                def request(kind, payload):
+                    requests.append((kind, payload))
+                    if kind == 'text':
+                        raise NimiRequestError({'message': 'Invalid provider output', 'reasonCode': 'AI_OUTPUT_INVALID', 'traceId': 'failure-fixture'})
+                    return {'saved': True}  # Persistence acknowledgment only, never an AI result.
+                with patch('core.utils.ask_gpt.request_model', side_effect=request):
+                    with self.assertRaises(NimiRequestError) as caught:
+                        ask_gpt('Exact original prompt\nwith spacing.', resp_type='json', log_title='translate_faithfulness')
+                self.assertIn('translate_faithfulness', str(caught.exception))
+                self.assertEqual([kind for kind, _ in requests], ['text', 'checkpoint'])
+                self.assertFalse(Path('output/gpt_log/translate_faithfulness.json').exists())
+                error = json.loads(Path('output/gpt_log/error.json').read_text(encoding='utf-8'))[0]
+                self.assertEqual(error['prompt'], 'Exact original prompt\nwith spacing.')
+                self.assertIsNone(error['resp']); self.assertIsNone(error['resp_content'])
+                self.assertEqual(error['failure']['traceId'], 'failure-fixture')
             finally:
                 os.chdir(previous)
 

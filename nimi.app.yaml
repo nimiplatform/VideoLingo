@@ -1,6 +1,6 @@
 app_id: ai.nimi.videolingo
 display_name: VideoLingo
-version: 0.1.0
+version: 0.1.3
 profile: standalone
 manifest_role: submitted-input
 app_access:
@@ -19,6 +19,7 @@ metadata:
   summary: 自动转写、翻译字幕与视频配音。当前开发版本已验证短片字幕、参考音色与整片背景混合，长视频和批量流程仍在验收。
   icon: docs/public/apple-touch-icon.png
   readme: docs/nimi-development.md
+  release_notes: RELEASE_NOTES.md
   author: VideoLingo contributors
 local_development:
   electron:

@@ -35,9 +35,9 @@ def translate_lines(lines, previous_content_prompt, after_cotent_prompt, things_
             return valid_translate_result(response_data, [str(i) for i in range(1, length+1)], ['origin', 'direct', 'reflect', 'free'])
         for retry in range(3):
             if step_name == 'faithfulness':
-                result = ask_gpt(prompt+retry* " ", resp_type='json', valid_def=valid_faith, log_title=f'translate_{step_name}')
+                result = ask_gpt(prompt+retry* " ", resp_type='json', valid_def=valid_faith, log_title=f'translate_{step_name}', request_context={'chunkIndex': index})
             elif step_name == 'expressiveness':
-                result = ask_gpt(prompt+retry* " ", resp_type='json', valid_def=valid_express, log_title=f'translate_{step_name}')
+                result = ask_gpt(prompt+retry* " ", resp_type='json', valid_def=valid_express, log_title=f'translate_{step_name}', request_context={'chunkIndex': index})
             if len(lines.split('\n')) == len(result):
                 return {str(i): result[str(i)] for i in range(1, length + 1)}
             if retry != 2:
