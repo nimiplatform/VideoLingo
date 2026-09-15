@@ -4,7 +4,7 @@ Integrates the real VideoLingo workspace, subtitle proofreading, reference-voice
 
 The development long-film workflow completed five source-separation chunks, 48 speech clips, mixing and actual App playback. An explicit continuation recovered one model generation-limit failure while retaining successful clips. The 734.166667-second output decoded completely. Original recognition results still require human proofreading; this is functional acceptance, not a subtitle or voice-quality guarantee. The related 47 App test entries passed.
 
-The 0.1.5 production build and frozen-backend checks are pending this concentrated packaging run. **0.1.5 installation, native export and public release admission are NOT-VERIFIED.** Earlier frozen packages remain unchanged; no release or Registry submission is performed. The following notes describe earlier candidate stages.
+The 0.1.5 Windows production build, frozen-backend checks and production packaging passed from source dd7b1d5. The frozen candidate is 1,071,656,147 bytes with SHA-256 `977adff370b33dab724569c741ef9ccccdca0946ccda45cca2220109cacb836d`. The Desktop owner verified the local 0.1.4-to-0.1.5 update, installed launch and Nimi Access, retained project media, playback through the existing ten-second subtitle video, and native export matching the pre-update file. This did not rerun all installed AI workflows. **Public Release, Registry admission and Catalog download remain NOT-VERIFIED.** Earlier frozen packages remain unchanged; no release or Registry submission is performed. The following notes describe earlier candidate stages.
 
 # VideoLingo 0.1.4 — consolidated local candidate
 

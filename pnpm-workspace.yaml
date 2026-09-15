@@ -5,7 +5,7 @@ onlyBuiltDependencies:
   - esbuild
   - protobufjs
 overrides:
-  '@nimiplatform/app-tools': file:D:/nimi-realm/nimi-apps/.local/nimi-packages/dev-28353e9c9/nimiplatform-app-tools-0.7.0.tgz
-  '@nimiplatform/sdk': file:D:/nimi-realm/nimi-apps/.local/nimi-packages/dev-28353e9c9/nimiplatform-sdk-0.14.0.tgz
-  '@nimiplatform/kit': file:D:/nimi-realm/nimi-apps/.local/nimi-packages/dev-28353e9c9/nimiplatform-kit-0.10.0.tgz
-  '@nimiplatform/kit-protected-local-win32-x64': file:D:/nimi-realm/nimi-apps/.local/nimi-packages/dev-28353e9c9/nimiplatform-kit-protected-local-win32-x64-0.10.0.tgz
+  '@nimiplatform/app-tools': file:D:/nimi-realm/nimi-apps/.local/nimi-packages/dev-48981dec4/nimiplatform-app-tools-0.7.0.tgz
+  '@nimiplatform/sdk': file:D:/nimi-realm/nimi-apps/.local/nimi-packages/dev-48981dec4/nimiplatform-sdk-0.14.0.tgz
+  '@nimiplatform/kit': file:D:/nimi-realm/nimi-apps/.local/nimi-packages/dev-48981dec4/nimiplatform-kit-0.10.0.tgz
+  '@nimiplatform/kit-protected-local-win32-x64': file:D:/nimi-realm/nimi-apps/.local/nimi-packages/dev-48981dec4/nimiplatform-kit-protected-local-win32-x64-0.10.0.tgz

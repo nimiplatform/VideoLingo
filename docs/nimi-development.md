@@ -2,9 +2,19 @@
 
 本项目的目标是通过真实第三方应用验证和修复Nimi平台及接入能力，并交付可构建、经Desktop安装启动和使用的生态App。当前只修平台缺陷和适配引入的接线、依赖、生命周期、存储、权限及构建安装问题；上游App行为和模型内容质量按限制记录，不再做泛化产品优化、质量调参或场景矩阵。长片验收验证功能与校对流程，不要求生成内容无需人工校对。
 
-## 0.1.5 当前集中交付状态
+## 当前开发依赖：dev-48981dec4
 
-已接入实际VideoLingo产品工作台、Python业务流程和Nimi SDK/Kit Host，不是独立接口测试页。当前完整本地归档组合为 `dev-28353e9c9`：App Tools 0.7.0、SDK 0.14.0、Kit/native 0.10.0、nimi-coding 0.6.3；固定Node 24和pnpm 10.34.5及锁文件。安装、sync/check及47项App测试（含Python检查）通过；0.1.5生产构建和冻结后端检查待本次集中执行，0.1.5安装运行及正式发布准入为 **NOT-VERIFIED**。旧0.1.4及更早冻结包保持不变。
+按manager交付，将四个完整本地tarball override及锁文件切到 `dev-48981dec4`。App Tools 0.7.0、SDK 0.14.0、Kit/native 0.10.0及nimi-coding 0.6.3矩阵不变；native复用上一组合字节，其他三包更新。已核对目标矩阵与随包README/CHANGELOG：renderer按音频本身字节预算校验，多行及pending/no-speech转录内容按合同保留，app-tools校验已安装包与所选tarball及锁定integrity一致。
+
+`pnpm install --offline --no-frozen-lockfile`、目标CLI的sync dry-run（无managed文件改动）、sync/check及既有47项App测试全部通过。本轮只更新当前开发依赖，没有启动App、重跑长片/AI、重启Runtime、执行新build/pack或发布；新组合的真实App业务运行仍为 **NOT-VERIFIED**。下述已验收0.1.5冻结包继续对应 `dd7b1d5` / `dev-28353e9c9`，其字节及原构建、安装验收记录不变，不能将旧包结果算成新组合验收。
+
+## 0.1.5 冻结候选交付状态
+
+已接入实际VideoLingo产品工作台、Python业务流程和Nimi SDK/Kit Host，不是独立接口测试页。该冻结候选使用的完整本地归档组合为 `dev-28353e9c9`：App Tools 0.7.0、SDK 0.14.0、Kit/native 0.10.0、nimi-coding 0.6.3；固定Node 24和pnpm 10.34.5及锁文件。安装、sync/check及47项App测试（含Python检查）通过；0.1.5 Windows生产构建、实际冻结后端检查和 `pack --production` 已通过，0.1.5本地更新、安装态启动与Nimi Access、既有字幕视频播放及原生导出已由Desktop owner验收通过；安装态全部AI流程没有逐项重跑，公开Release、Registry准入及Catalog下载仍为 **NOT-VERIFIED**。旧0.1.4及更早冻结包保持不变。
+
+构建源码为 `dd7b1d5ee67143d04d8474e736d95b966b8883e0`。唯一0.1.5候选为 `dist/nimi-app/ai.nimi.videolingo-0.1.5-windows-x86_64.nimiapp`，1071656147 bytes，SHA-256 `977adff370b33dab724569c741ef9ccccdca0946ccda45cca2220109cacb836d`。冻结检查实际验证UTF-8配置、Host请求与拒绝、Streamlit健康、任务表解析及真实loopback媒体下载，没有AI成功替身。构建后的本次文档记录不改变包内执行代码。用户已将整理后的3个提交推送至 `nimi` 并设为默认分支；后续工作使用该分支，本次交付记录仅本地提交，不重写已推送历史。
+
+Desktop owner反馈的本地安装验收：用户在Desktop确认0.1.4→0.1.5更新，Job `apj_v1_VDks_wCmXCWPRGXnE4SNVqxD5YO4ZPefNggqXwZ9bWQ`，releaseRef `local-package:v1:38ad7e650f9ed9b0febdeb250e93f227dccc50db6e4b1c48`。已观察实际安装目录exe正式启动、Desktop运行中/Nimi Access已就绪、产品“Nimi已连接”。保留的 `video-no-burn.mp4` 和字幕视频可用，安装版播放器从0:00/0:10实际播放至0:10/0:10且画面变化。通过产品 `output_sub.mp4` 按钮及 `Export VideoLingo result` 原生保存对话框导出，UI显示完成；owner报告文件497275 bytes，SHA-256 `f13e91f91233b50f6b312c9c3113119041f39c13a7b955276c25a9a10565db0f`，与本App `.nimi/local/installed-acceptance/output_sub.mp4` 升级前备份一致。Desktop部分使用CDP，安装版未增加调试端口，必要播放/保存采用原生操作；没有重跑AI、改业务数据或执行清理。这些结果证明本次安装、保留媒体和原生导出，不外推为安装态全部AI流程已重跑。
 
 长片功能链已完成：在原752项目保留旧ASR/翻译及真实时间，只通过正常校对修改显示文本。SDK对公开number[]输入的容量缺陷经manager交付9d修复包解决，原5块44100Hz双声道输入全部完成分离，未缩小输入规避。48段真实语音及混合视频完成；其中一次Qwen3语音生成达到2048 codec token上限，保留原失败记录，在一次明确继续后成功，原20段缓存及VoiceAsset保持不变。没有更换模型、调整生成上限或重做ASR。
 
