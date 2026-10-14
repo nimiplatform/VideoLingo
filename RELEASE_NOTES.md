@@ -1,3 +1,13 @@
+# VideoLingo 0.1.6 — Nimi Windows release preparation
+
+- Uses published SDK/Kit 0.21.0 and App Tools 0.13.1 with the existing Streamlit and Electron product.
+- Prepares audio through managed artifacts for source separation and retrieves complete terminal Job results.
+- Restores technical-session services without replaying old media work.
+- Prepares the pinned Python 3.14.4 business environment from the existing lockfile in tests and production builds, including clean CI machines.
+- Preserves project media, subtitle proofreading, reference voices and batch workflows. Generated subtitles and dubbing still require human review.
+
+Version 0.1.5 below is the retained historical local candidate; its package bytes are not replaced by this release.
+
 # VideoLingo 0.1.5 — consolidated local candidate
 
 Integrates the real VideoLingo workspace, subtitle proofreading, reference-voice dubbing and batch workflows with the Nimi SDK/Kit Host. Project-scoped confirmation protects media and dubbing cleanup; archived projects remain read-only. Uses the explicitly delivered dev-28353e9c9 package set and frozen dependency locks, including session-maintenance recovery, large-audio SDK validation and packaged-worker UTF-8 guidance.

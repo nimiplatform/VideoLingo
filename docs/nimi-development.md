@@ -2,7 +2,13 @@
 
 本项目的目标是通过真实第三方应用验证和修复Nimi平台及接入能力，并交付可构建、经Desktop安装启动和使用的生态App。当前只修平台缺陷和适配引入的接线、依赖、生命周期、存储、权限及构建安装问题；上游App行为和模型内容质量按限制记录，不再做泛化产品优化、质量调参或场景矩阵。长片验收验证功能与校对流程，不要求生成内容无需人工校对。
 
-## 当前正式包升级与验收（2026-10-11）
+## 当前 Windows 交付准备（2026-10-15）
+
+既有未提交的平台接入、音频资源与会话恢复改动已保存为 `3a8621f`，类型检查与 48 项测试通过。当前 0.1.6 采用 npm 正式 SDK/Kit/native 0.21.0、App Tools 0.13.1、Nimi Coding 0.6.5 和 Electron 44；Vite 8 满足当前工具依赖。0.1.5 冻结候选及其历史记录保留，不以新字节替换。当前组合的安装态、公开发布和 Catalog 验收仍需实际完成。
+
+独立环境使用 Node 24、pnpm 10.34.5、固定 Python 3.14.4 与 `requirements-nimi.lock`。正常设置命令为 `pnpm install --frozen-lockfile`、`pnpm setup:business`、`pnpm sync`、`pnpm check`；`pnpm dev` 继续由 Desktop 监督真实 Streamlit/Electron。测试与生产构建显式调用同一业务依赖设置脚本，CI 不再依赖作者机已有 `.venv`。启动产品本身不安装依赖。下面的历史独立安装命令和本地 tgz 组合只属于其标注阶段。
+
+## 历史正式依赖升级与验收（2026-10-11）
 
 当前使用 npm 正式 App Tools 0.11.4、SDK 0.21.0、Kit/native 0.18.1 和 Nimi Coding 0.6.5；已移除 Nimi 本地归档覆盖并更新锁文件。Host 在加载 Kit 前绑定当前 Host profile，技术会话恢复后重新绑定服务；异步音频任务使用 Uint8Array、移除已废弃的提交超时，并在观察终态后 Get 完整结果。人声分离通过公开 artifacts.upload 将 App 音频规范化为受管资源；仅在必要时对已规范化资源重采样至 44100 Hz 或将单声道转为双声道，再以 sourceAudio 提交。类型检查、48 项 App 测试、Host 构建、App Tools check 及冻结锁验证通过。
 

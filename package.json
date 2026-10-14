@@ -1,6 +1,6 @@
 {
   "name": "videolingo-nimi",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "VideoLingo video translation and dubbing for Nimi",
   "type": "module",
@@ -20,18 +20,19 @@
     "check": "nimi-app check",
     "typecheck": "tsc --noEmit",
     "test": "nimi-app test",
-    "test:app": "node --import tsx --test tests/nimi-*.test.ts",
+    "test:app": "node scripts/setup-business.mjs && node --import tsx --test tests/nimi-*.test.ts",
+    "setup:business": "node scripts/setup-business.mjs",
     "test:packaged-backend": "node --import tsx scripts/check-packaged-backend.mjs",
     "build:component": "node scripts/build-component.mjs",
     "build:electron": "node scripts/build-host.mjs",
-    "build:electron:production": "node scripts/build-production.mjs",
+    "build:electron:production": "node scripts/setup-business.mjs && node scripts/build-production.mjs",
     "app:build": "nimi-app build",
     "pack": "nimi-app pack",
     "dev:shell": "nimi-app dev",
     "dev:electron": "nimi-app dev --shell electron"
   },
   "dependencies": {
-    "@nimiplatform/kit": "^0.18.1",
+    "@nimiplatform/kit": "^0.21.0",
     "@nimiplatform/sdk": "^0.21.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
@@ -39,7 +40,7 @@
   "devDependencies": {
     "@electron/packager": "^20.3.0",
     "@ffprobe-installer/ffprobe": "2.1.2",
-    "@nimiplatform/app-tools": "^0.11.4",
+    "@nimiplatform/app-tools": "^0.13.1",
     "@nimiplatform/nimi-coding": "0.6.5",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "^24.13.3",
@@ -50,7 +51,7 @@
     "tailwindcss": "4.3.3",
     "tsx": "^4.23.13",
     "typescript": "^5.9.3",
-    "vite": "7.3.6",
+    "vite": "8.3.4",
     "yaml": "^2.9.0"
   }
 }

@@ -1,3 +1,5 @@
+> **Nimi fork:** Use [Nimi development and delivery](docs/nimi-development.md) for this Windows Electron/Streamlit App. AI execution and model credentials belong to Nimi; the upstream standalone setup and provider-key instructions retained below are historical reference, not this fork's launch path.
+
 <div align="center">
 
 <img src="/docs/logo.png" alt="VideoLingo Logo" height="140">
@@ -186,7 +188,7 @@ in the local product, so Nimi access must not introduce one.
 
 The root `package.json` now defines the actual adopted App, with its Streamlit
 renderer, Electron Host, tests and build commands. It now uses the published
-App Tools 0.11.4, SDK 0.21.0, Kit/native 0.18.1 and Nimi Coding 0.6.5 with
+App Tools 0.13.1, SDK 0.21.0, Kit/native 0.21.0 and Nimi Coding 0.6.5 with
 Electron 44; the package lock pins registry resolutions. See [Nimi development](docs/nimi-development.md)
 for the independent Python/Node setup, product interfaces and current results.
 The original admission baseline was App Tools 0.6.0 / SDK 0.13.0 / Kit 0.9.0;
