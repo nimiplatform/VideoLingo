@@ -1,3 +1,7 @@
+# VideoLingo 0.1.7 — Windows media tool setup
+
+Prepares the locked FFmpeg/FFprobe and Deno tools before tests on clean Windows runners. The v0.1.6 tag's CI exposed missing ffprobe; it did not publish a Release and is retained unchanged. Business behavior and the bounded 0.1.6 subtitle/export/voice-preview acceptance below are unchanged; full dubbing and installed/Catalog acceptance retain their stated limits.
+
 # VideoLingo 0.1.6 — Nimi Windows release preparation
 
 - Uses published SDK/Kit 0.21.0 and App Tools 0.13.1 with the existing Streamlit and Electron product.

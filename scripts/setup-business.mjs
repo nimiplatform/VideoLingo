@@ -23,3 +23,4 @@ if (!existsSync(uv)) {
 if (!existsSync(businessPython)) run(uv, ['venv', '--python', '3.14.4', '.venv']);
 run(businessPython, ['-c', 'import sys; assert sys.version_info[:3] == (3, 14, 4), "VideoLingo requires its pinned Python 3.14.4 business environment"']);
 run(uv, ['pip', 'sync', '--python', businessPython, 'requirements-nimi.lock']);
+run(process.execPath, ['scripts/prepare-media.mjs']);

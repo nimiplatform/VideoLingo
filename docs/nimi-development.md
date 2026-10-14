@@ -4,6 +4,8 @@
 
 ## 当前 Windows 交付准备（2026-10-15）
 
+当前待发布补丁为 0.1.7：v0.1.6 的 Windows CI 在媒体测试中找不到 ffprobe，未生成公开 Release；保留原 tag，不移动它。初始化现在也执行既有 `prepare-media.mjs`，在测试前准备锁定来源的 FFmpeg/FFprobe 与 Deno。业务代码与下述 0.1.6 验收输入未改变，结果按其实际范围复用；不重复 AI 调用冒充新增覆盖。
+
 既有未提交的平台接入、音频资源与会话恢复改动已保存为 `3a8621f`，类型检查与 48 项测试通过。当前 0.1.6 采用 npm 正式 SDK/Kit/native 0.21.0、App Tools 0.13.1、Nimi Coding 0.6.5 和 Electron 44；Vite 8 满足当前工具依赖。0.1.5 冻结候选及其历史记录保留，不以新字节替换。当前组合的安装态、公开发布和 Catalog 验收仍需实际完成。
 
 独立环境使用 Node 24、pnpm 10.34.5、固定 Python 3.14.4 与 `requirements-nimi.lock`。正常设置命令为 `pnpm install --frozen-lockfile`、`pnpm setup:business`、`pnpm sync`、`pnpm check`；`pnpm dev` 继续由 Desktop 监督真实 Streamlit/Electron。测试与生产构建显式调用同一业务依赖设置脚本，CI 不再依赖作者机已有 `.venv`。启动产品本身不安装依赖。下面的历史独立安装命令和本地 tgz 组合只属于其标注阶段。
