@@ -15,7 +15,7 @@ import { isMissingJob, retainedJob } from './job-recovery.js';
 import { currentSubtitleRevision, subtitleFiles, subtitleKey, subtitleIssues, subtitleOutputs, SUBTITLE_FILES, SUBTITLE_LIMIT, type SubtitleReview, type SubtitleSaveInput } from './subtitles.js';
 import { businessSettings, DEFAULT_BUSINESS_SETTINGS, pythonBusinessSettings, translationSettings, validateBusinessSettings, type BusinessSettings } from './business-settings.js';
 
-type Services = { storage: NimiLocalAppClient['storage']; aiConfig: Pick<NimiLocalAppClient['aiConfig'], 'get'>; ai: Pick<NimiLocalAppAIConsumptionClient, 'scenarioJobs' | 'text'> };
+type Services = { storage: NimiLocalAppClient['storage']; aiConfig: Pick<NimiLocalAppClient['aiConfig'], 'get'>; ai: Pick<NimiLocalAppAIConsumptionClient, 'scenarioJobs' | 'text' | 'artifacts'> };
 type Activity = { runId: string; epoch: number; abort: AbortController; pause: boolean; runtimeJobId?: string; done?: Promise<void> };
 type Prepared = { chunks: { file: string; offsetSeconds: number; durationSeconds: number }[]; sampleRateHz: number; channels: number };
 type Consumed = { status: 'transcribed' | 'no-speech'; language: string; sourceLanguage: string; reportedLanguages: string[]; unreportedLanguageChunks: number; wordCount: number; text: string; files: string[] };
@@ -1180,7 +1180,7 @@ export class Projects {
           this.guard(task.epoch);
           task.abort.signal.throwIfAborted();
           job = (await this.services.ai.scenarioJobs.submit({ type: 'speech-transcribe', mimeType: 'audio/wav', language: project.languageHint,
-            timestamps: true, prompt: '', responseFormat: '', audioSource: { type: 'bytes', bytes: [...bytes] } }, { timeoutMs: 300000 })).job;
+            timestamps: true, prompt: '', responseFormat: '', audioSource: { type: 'bytes', bytes } })).job;
           project.runtimeJobId = job.jobId;
         }
         task.runtimeJobId = job.jobId;
@@ -1196,8 +1196,8 @@ export class Projects {
           task.abort.signal.addEventListener('abort', abort, { once: true });
           try { for await (const event of subscription) { if (['completed', 'failed', 'canceled', 'timeout'].includes(event.job.status)) break; } }
           finally { task.abort.signal.removeEventListener('abort', abort); await subscription.cancel(); }
-          job = (await this.services.ai.scenarioJobs.get(job.jobId)).job;
         }
+        job = (await this.services.ai.scenarioJobs.get(job.jobId)).job;
         task.abort.signal.throwIfAborted();
         if (job.status !== 'completed' || !job.transcription) throw new Error(`${job.reasonCode}: ${job.reasonDetail || job.status}`);
         const resultPath = `projects/${project.id}/chunks/${index}.transcription.json`;
@@ -1256,14 +1256,29 @@ export class Projects {
         initialJob = undefined;
         if (!job || ['failed', 'canceled', 'timeout'].includes(job.status)) {
           if (await this.selectionKey('audio.separate') !== stage.selectionKey) throw new Error('Separation configuration changed; resume with the current resource');
-          const input = await this.services.storage.assets.read({ relativePath: chunk.assetPath });
-          const parts: Uint8Array[] = [];
-          let length = 0;
-          for await (const part of input.body) { task.abort.signal.throwIfAborted(); parts.push(part); length += part.length; }
-          if (length > 32 * 1024 ** 2 || chunk.durationSeconds > 300) throw new Error('Prepared separation input exceeds the delivered Driver limits');
+          let input = await this.services.ai.artifacts.upload({
+            mimeType: 'audio/wav',
+            source: { kind: 'app-asset', relativePath: chunk.assetPath },
+            audioPreparation: { profile: 'canonical-pcm-v1' },
+          }).catch(error => {
+            console.error('VideoLingo separation input preparation failed', extractNimiErrorFields(error));
+            throw new Error(`Preparing separation input: ${errorText(error)}`, { cause: error });
+          });
           this.guard(task.epoch); task.abort.signal.throwIfAborted();
+          const channels = input.audioInfo?.channels;
+          if (channels !== 1 && channels !== 2) throw new Error('Separation needs canonical mono or stereo audio');
+          if (input.audioInfo?.sampleRateHz !== 44100 || channels === 1) {
+            input = await this.services.ai.artifacts.upload({ mimeType: 'audio/wav',
+              source: { kind: 'artifact', artifactId: input.artifactId },
+              audioPreparation: { profile: 'canonical-pcm-v1', targetSampleRateHz: 44100,
+                channelMode: channels === 1 ? 'MONO_TO_STEREO' : 'PRESERVE' } });
+            this.guard(task.epoch); task.abort.signal.throwIfAborted();
+          }
           job = (await this.services.ai.scenarioJobs.submit({ type: 'audio-separate', mimeType: 'audio/wav',
-            audioSource: { type: 'bytes', bytes: [...Buffer.concat(parts)] } }, { timeoutMs: 300000 })).job;
+            sourceAudio: { artifactId: input.artifactId } }).catch(error => {
+              console.error('VideoLingo separation submission failed', extractNimiErrorFields(error));
+              throw new Error(`Submitting separation: ${errorText(error)}`, { cause: error });
+            })).job;
           stage.runtimeJobId = job.jobId;
         }
         task.runtimeJobId = job.jobId;
@@ -1279,8 +1294,8 @@ export class Projects {
           task.abort.signal.addEventListener('abort', abort, { once: true });
           try { for await (const event of subscription) { if (['completed', 'failed', 'canceled', 'timeout'].includes(event.job.status)) break; } }
           finally { task.abort.signal.removeEventListener('abort', abort); await subscription.cancel(); }
-          job = (await this.services.ai.scenarioJobs.get(job.jobId)).job;
         }
+        job = (await this.services.ai.scenarioJobs.get(job.jobId)).job;
         task.abort.signal.throwIfAborted();
         if (job.status !== 'completed' || job.scenarioType !== 'audio-separate') throw new Error(`${job.reasonCode}: ${job.reasonDetail || job.status}`);
         const roles = validateNimiLocalAppAudioSeparation(job.audioSeparation, job.artifacts);

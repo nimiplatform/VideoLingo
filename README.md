@@ -185,9 +185,9 @@ the baseline for this evaluation. No business account or registration flow exist
 in the local product, so Nimi access must not introduce one.
 
 The root `package.json` now defines the actual adopted App, with its Streamlit
-renderer, Electron Host, tests and build commands. It currently uses local
-App Tools 0.7.0, SDK 0.14.0, Kit/native 0.10.0 and nimi-coding 0.6.3; its
-package lock fixes actual resolutions. See [Nimi development](docs/nimi-development.md)
+renderer, Electron Host, tests and build commands. It now uses the published
+App Tools 0.11.4, SDK 0.21.0, Kit/native 0.18.1 and Nimi Coding 0.6.5 with
+Electron 44; the package lock pins registry resolutions. See [Nimi development](docs/nimi-development.md)
 for the independent Python/Node setup, product interfaces and current results.
 The original admission baseline was App Tools 0.6.0 / SDK 0.13.0 / Kit 0.9.0;
 the earlier temporary results below remain separate. No parent workspace

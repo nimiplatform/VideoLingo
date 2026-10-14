@@ -97,7 +97,7 @@ export class ModelOperations {
     });
     guard(); signal.throwIfAborted();
     let job = existing && !['failed', 'canceled', 'timeout'].includes(existing.status)
-      ? existing : (await this.services.ai.scenarioJobs.submit(spec, { timeoutMs: 300000 })).job;
+      ? existing : (await this.services.ai.scenarioJobs.submit(spec)).job;
     const abort = () => { void this.services.ai.scenarioJobs.cancel(job.jobId, 'videolingo-user-canceled').catch(() => {}); };
     signal.addEventListener('abort', abort, { once: true });
     try {
@@ -159,7 +159,7 @@ export class ModelOperations {
     const pending = this.voicePromises.get(key);
     if (pending) return pending;
     const operation = (async () => {
-    const result = await this.cachedSpeechJob(`voice-${key}`, { type: 'voice-create', creationSource: 'reference-audio', referenceAudio: { type: 'bytes', bytes: [...bytes] },
+    const result = await this.cachedSpeechJob(`voice-${key}`, { type: 'voice-create', creationSource: 'reference-audio', referenceAudio: { type: 'bytes', bytes },
       referenceAudioMime: path.extname(actual).toLowerCase() === '.mp3' ? 'audio/mpeg' : 'audio/wav', languageHints: language ? [language] : [], preferredName: 'VideoLingo reference', text });
     if (!result.asset || result.asset.status !== 'active' || !result.voiceReference || result.voiceReference.voiceAssetId !== result.asset.voiceAssetId) {
       throw new Error('Voice creation did not return its active VoiceAsset');

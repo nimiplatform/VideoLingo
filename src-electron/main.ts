@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn, type ChildProcess } from 'node:child_process';
 import net from 'node:net';
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, protocol, session, webContents } from 'electron';
-import { isAllowedElectronRendererUrl, registerNimiElectronAppAssetProtocolScheme, registerNimiElectronAppBridge } from '@nimiplatform/kit/shell/electron/main';
+import { configureNimiElectronAppHostProfile } from '@nimiplatform/kit/shell/electron/host-profile';
 import { Projects } from './projects.js';
 import { Batches, type BatchItemInput } from './batches.js';
 import type { DubbingInput, DownloadInput, PreviewInput, TranslationInput } from './project-types.js';
@@ -13,6 +13,19 @@ import type { BusinessSettings } from './business-settings.js';
 import { workerEnvironment } from './media-worker.js';
 
 declare const __NIMI_ELECTRON_PRODUCTION__: boolean;
+try {
+  configureNimiElectronAppHostProfile(app);
+} catch (error) {
+  process.stderr.write(`[nimi-app-host-profile] ${error instanceof Error ? error.message : String(error)}\n`);
+  app.exit(78);
+  throw error;
+}
+const {
+  isAllowedElectronRendererUrl,
+  registerNimiElectronAppAssetProtocolScheme,
+  registerNimiElectronAppBridge,
+} = await import('@nimiplatform/kit/shell/electron/main');
+
 const APP_ID = 'ai.nimi.videolingo';
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const sourceRoot = path.resolve(currentDir, '..');
@@ -20,6 +33,8 @@ const appRoot = __NIMI_ELECTRON_PRODUCTION__ ? path.join(process.resourcesPath, 
 let backend: ChildProcess | undefined;
 let projects: Projects | undefined;
 let batches: Batches | undefined;
+let resettingRenderer = false;
+let quitting = false;
 app.setName('VideoLingo');
 app.setAppUserModelId('ai.nimi.apps.ai.nimi.videolingo');
 Menu.setApplicationMenu(null);
@@ -89,15 +104,32 @@ void app.whenReady().then(async () => {
       'videolingo.project.pause': ({ payload }) => projects!.control(text(payload.projectId), 'pause'),
       'videolingo.project.cancel': ({ payload }) => projects!.control(text(payload.projectId), 'cancel'),
     },
-    onSessionInvalidated: () => { console.warn('VideoLingo protected session invalidated', new Date().toISOString()); batches?.invalidate(); projects?.invalidate(); },
+    onSessionReady: services => {
+      projects = new Projects(services, appRoot, __NIMI_ELECTRON_PRODUCTION__);
+      batches = new Batches(services.storage, projects);
+    },
+    onSessionInvalidated: () => {
+      console.warn('VideoLingo protected session invalidated', new Date().toISOString());
+      batches?.invalidate(); projects?.invalidate();
+      const windows = BrowserWindow.getAllWindows();
+      if (quitting || windows.length === 0) return;
+      resettingRenderer = true;
+      try {
+        for (const window of windows) window.destroy();
+        void createMainWindow().catch(error => console.error('VideoLingo session renderer reset failed', error));
+      } finally { resettingRenderer = false; }
+    },
   });
   projects = new Projects(bridge.services, appRoot, __NIMI_ELECTRON_PRODUCTION__);
   batches = new Batches(bridge.services.storage, projects);
-  const window = new BrowserWindow({ width: 1180, height: 850, minWidth: 540, minHeight: 560, title: 'VideoLingo', autoHideMenuBar: true,
-    webPreferences: { preload: path.join(currentDir, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
-  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-  window.webContents.on('will-navigate', (event, url) => { if (!isAllowedElectronRendererUrl(url, allowedRendererUrls)) event.preventDefault(); });
-  await window.loadURL(rendererUrl);
+  await createMainWindow();
+  async function createMainWindow() {
+    const window = new BrowserWindow({ width: 1180, height: 850, minWidth: 540, minHeight: 560, title: 'VideoLingo', autoHideMenuBar: true,
+      webPreferences: { preload: path.join(currentDir, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+    window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    window.webContents.on('will-navigate', (event, url) => { if (!isAllowedElectronRendererUrl(url, allowedRendererUrls)) event.preventDefault(); });
+    await window.loadURL(rendererUrl);
+  }
 }).catch(error => {
   console.error(error);
   const details = error instanceof Error ? error.stack || error.message : String(error);
@@ -107,8 +139,8 @@ void app.whenReady().then(async () => {
   if (selected === 0) clipboard.writeText(details);
   app.quit();
 });
-app.on('window-all-closed', () => app.quit());
-app.on('before-quit', () => { batches?.invalidate(); projects?.invalidate(); backend?.kill(); });
+app.on('window-all-closed', () => { if (!resettingRenderer && BrowserWindow.getAllWindows().length === 0) app.quit(); });
+app.on('before-quit', () => { quitting = true; batches?.invalidate(); projects?.invalidate(); backend?.kill(); });
 
 function readDevelopmentRendererUrl(): string {
   const prefix = '--nimi-dev-renderer-url=';

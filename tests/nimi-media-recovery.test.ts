@@ -5,7 +5,7 @@ import { Projects } from '../src-electron/projects.ts';
 import type { VideoLingoProject } from '../src-electron/project-types.ts';
 
 const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-function fixture(kind: 'transcribe' | 'separate', reason: string) {
+function fixture(kind: 'transcribe' | 'separate', reason: string, channels = 2) {
   const capabilityContract = kind === 'transcribe' ? 'audio.transcribe' : 'audio.separate';
   const resource = { oneofKind: 'local', local: { loadoutRef: 'selection' } };
   const intent = { capabilityContract, route: { oneofKind: 'local', local: {} } };
@@ -17,17 +17,38 @@ function fixture(kind: 'transcribe' | 'separate', reason: string) {
     ...(kind === 'transcribe' ? { runtimeJobId: 'expired' } : { transcript: 'Already transcribed', separation: { state: 'interrupted' as const, selectionKey,
       currentChunk: 1, runtimeJobId: 'expired', pairs: [{ jobId: 'done', vocalsArtifactId: 'v', backgroundArtifactId: 'b', vocalsPath: 'v0', backgroundPath: 'b0', sampleRateHz: 16000, channels: 1 }] } }) };
   if (project.separation) project.separation.chunks = project.chunks.map(({ resultPath: _result, ...chunk }) => chunk);
-  let gets = 0, submissions = 0;
+  let gets = 0, submissions = 0, uploads = 0;
   const app = new Projects({ storage: {
     readJson: async () => ({ value: structuredClone(project) }), writeJson: async (_: string, value: VideoLingoProject) => { project = structuredClone(value); },
     assets: { read: async () => ({ body: (async function* () { yield new Uint8Array([1]); })() }) },
   } as never, aiConfig: { get: async () => ({ config: { capabilities: [intent] }, effectiveSelections: [{ capabilityContract, state: 'ready', resource }] }) } as never,
-    ai: { text: {} as never, scenarioJobs: {
+    ai: { text: {} as never, artifacts: {
+      upload: async (input: unknown) => {
+        uploads++;
+        assert.deepEqual(input, uploads === 1
+          ? { mimeType: 'audio/wav', source: { kind: 'app-asset', relativePath: 'chunk1' }, audioPreparation: { profile: 'canonical-pcm-v1' } }
+          : { mimeType: 'audio/wav', source: { kind: 'artifact', artifactId: 'owned-separation-input' },
+              audioPreparation: { profile: 'canonical-pcm-v1', targetSampleRateHz: 44100, channelMode: 'MONO_TO_STEREO' } });
+        return { artifactId: uploads === 1 ? 'owned-separation-input' : 'stereo-input', mimeType: 'audio/wav', sizeBytes: 1,
+          audioInfo: { sampleRateHz: 44100, channels: uploads === 1 ? channels : 2, frameCount: 44100, durationMs: 1000 } };
+      },
+    } as never, scenarioJobs: {
       get: async () => { gets++; throw createNimiError({ message: reason, reasonCode: reason, retryable: false }); },
-      submit: async () => { submissions++; throw createNimiError({ message: 'Submission deliberately refused', reasonCode: 'APP_AUTHORIZATION_DENIED', retryable: false }); },
+      submit: async (spec: unknown) => {
+        if (kind === 'separate') assert.deepEqual(spec, { type: 'audio-separate', mimeType: 'audio/wav', sourceAudio: { artifactId: channels === 1 ? 'stereo-input' : 'owned-separation-input' } });
+        submissions++; throw createNimiError({ message: 'Submission deliberately refused', reasonCode: 'APP_AUTHORIZATION_DENIED', retryable: false });
+      },
     } as never } }, process.cwd());
-  return { app, read: () => project, counts: () => ({ gets, submissions }) };
+  return { app, read: () => project, counts: () => ({ gets, submissions }), uploads: () => uploads };
 }
+
+test('separation normalizes raw audio before an explicit mono-to-stereo conversion', async () => {
+  const f = fixture('separate', 'NOT_FOUND', 1);
+  await f.app.separate(id);
+  await f.app.settled(id);
+  assert.equal(f.uploads(), 2);
+  assert.equal(f.counts().submissions, 1);
+});
 
 for (const kind of ['transcribe', 'separate'] as const) {
   test(`${kind} expires only its missing Job and preserves completed blocks`, async () => {

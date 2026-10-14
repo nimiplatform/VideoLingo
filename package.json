@@ -31,21 +31,21 @@
     "dev:electron": "nimi-app dev --shell electron"
   },
   "dependencies": {
-    "@nimiplatform/kit": "^0.10.0",
-    "@nimiplatform/sdk": "^0.14.0",
+    "@nimiplatform/kit": "^0.18.1",
+    "@nimiplatform/sdk": "^0.21.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@electron/packager": "^20.3.0",
     "@ffprobe-installer/ffprobe": "2.1.2",
-    "@nimiplatform/app-tools": "^0.7.0",
-    "@nimiplatform/nimi-coding": "0.6.3",
+    "@nimiplatform/app-tools": "^0.11.4",
+    "@nimiplatform/nimi-coding": "0.6.5",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
-    "electron": "^42.10.1",
+    "electron": "^44.5.1",
     "esbuild": "^0.28.2",
     "tailwindcss": "4.3.3",
     "tsx": "^4.23.13",
