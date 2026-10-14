@@ -6,6 +6,8 @@
 - Prepares the pinned Python 3.14.4 business environment from the existing lockfile in tests and production builds, including clean CI machines.
 - Preserves project media, subtitle proofreading, reference voices and batch workflows. Generated subtitles and dubbing still require human review.
 
+Windows preparation passed 48 tests, production packaging and the frozen-backend checks. The fixed-service supervised App completed real transcription/translation/burning, played and natively exported a 50.64-second subtitle video, and played a 4.16-second Qwen3 Flash / Cherry preview. Full dubbing on this machine remains blocked by Nimi's CUDA dependency admission; the selected Qwen3 VC reference voice was created, but its synthesis returned model-not-found. Installation/Catalog and other platforms require their own acceptance. See the current delivery section for exact scope and retained failures.
+
 Version 0.1.5 below is the retained historical local candidate; its package bytes are not replaced by this release.
 
 # VideoLingo 0.1.5 — consolidated local candidate

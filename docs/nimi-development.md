@@ -8,6 +8,15 @@
 
 独立环境使用 Node 24、pnpm 10.34.5、固定 Python 3.14.4 与 `requirements-nimi.lock`。正常设置命令为 `pnpm install --frozen-lockfile`、`pnpm setup:business`、`pnpm sync`、`pnpm check`；`pnpm dev` 继续由 Desktop 监督真实 Streamlit/Electron。测试与生产构建显式调用同一业务依赖设置脚本，CI 不再依赖作者机已有 `.venv`。启动产品本身不安装依赖。下面的历史独立安装命令和本地 tgz 组合只属于其标注阶段。
 
+Windows 生产构建、冻结后端检查和生产打包已通过；冻结检查实际覆盖 UTF-8、Streamlit 健康、任务表和 loopback 下载及 Host 拒绝传播，不冒充 AI 成功。固定服务的 Nimi 0.2.5-rc.2 没有本项目当前主机的旧开发注册，因此创建了独立验收注册；原源码主机注册、旧 0.1.5 导入包与数据均保留。通过该 App 自身 CDP，在项目 `b42075e3-07b7-4027-8bcc-9efa10eac1ef` 正常导入既有公开 demo.mp4，重选固定服务上的 Deepseek V4 Flash，完成真实 Whisper 转写、语言分析、翻译/对齐和烧录，得到 14 对字幕及 50.642993 秒视频。播放器到达结尾、无解码错误；刷新后项目及结果保留。原生导出显示“导出完成”，文件 `.nimi/local/exports/0.1.6-subtitles.mp4` 为 1,851,462 bytes，FFprobe 时长一致。
+
+预置音色独立路径：通过公开配置明确选择 `qwen3-tts-flash` / Cherry，Job `01M4Y86MQKZZ37FPJCS5YYQGQS` 完成，4.16 秒、24 kHz、单声道试听播放到结尾且刷新后仍可用。没有用这份试听冒充整片配音或参考音色合成。
+
+当前限制分开记录：
+- 完整分离/混音在当前固定服务环境下为 NOT-VERIFIED。Home 对既有 HTDemucs 配置执行“仅准备”时，CUDA 13 用户态依赖失败：`LOCAL_ENVIRONMENT_DEPENDENCY_JOB_FAILED` / `host accelerator profile does not admit Windows NVIDIA CUDA dependency`。普通用户的 nvidia-smi 能识别 RTX 5090、驱动 610.88；固定服务的 GPU 探测失败原因尚未确认，不据此断言硬件不支持或修改驱动/安全配置。
+- 参考音色试验中的 Qwen Audio 3.0 拒绝本地字节输入；现有目录声明该克隆工作流只接收公共 URL，不能将其描述为字节路径成功。随后明确选择支持字节输入的 `qwen3-tts-vc` 并清空该模型不接收的可选参考原文；声音创建 Job `01M4Y81A4F2GBC6DM4HXFCBZYH` 成功，但合成 Job `01M4Y81C4M8VV1W0XRS9HPC9VS` 对实际模型 `qwen3-tts-vc-2026-01-22` 返回 `AI_MODEL_NOT_FOUND`。保留失败与新声音资产，不自动切换模型、不伪造声音产物。
+- 上述都是固定服务监督的开发 App 验收；新包的安装态、Catalog、其他平台及新的完整配音仍不由这些结果证明。历史长片与完整配音结果仅在其原组合范围内复用，字幕和声音质量仍需人工校对。Nimi 0.2.5-rc.2 仅为本机候选，未公开发布。
+
 ## 历史正式依赖升级与验收（2026-10-11）
 
 当前使用 npm 正式 App Tools 0.11.4、SDK 0.21.0、Kit/native 0.18.1 和 Nimi Coding 0.6.5；已移除 Nimi 本地归档覆盖并更新锁文件。Host 在加载 Kit 前绑定当前 Host profile，技术会话恢复后重新绑定服务；异步音频任务使用 Uint8Array、移除已废弃的提交超时，并在观察终态后 Get 完整结果。人声分离通过公开 artifacts.upload 将 App 音频规范化为受管资源；仅在必要时对已规范化资源重采样至 44100 Hz 或将单声道转为双声道，再以 sourceAudio 提交。类型检查、48 项 App 测试、Host 构建、App Tools check 及冻结锁验证通过。
