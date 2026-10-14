@@ -83,7 +83,7 @@ class StreamedMediaTests(unittest.TestCase):
         subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc2=size=64x48:rate=10:duration=1',
                         '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=24000:duration=1', '-c:v', 'mpeg4', '-c:a', 'pcm_s16le', 'source.mov'], check=True)
         before = hashlib.sha256(Path('source.mov').read_bytes()).hexdigest()
-        result = compatible_preview({'source': str(Path('source.mov').resolve())}, Path.cwd())
+        result = compatible_preview({'source': str(Path('source.mov').resolve())}, Path.cwd().resolve(strict=True))
         self.assertFalse(result['videoCopied'])
         self.assertAlmostEqual(result['durationSeconds'], result['sourceDurationSeconds'], delta=.1)
         self.assertEqual(hashlib.sha256(Path('source.mov').read_bytes()).hexdigest(), before)

@@ -19,7 +19,7 @@ class SeparationMediaTests(unittest.TestCase):
 
     def test_pair_is_assembled_on_the_source_timeline(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve(strict=True)
             result = assemble_separation({"chunks": [self.pair(root, 0), self.pair(root, 1)]}, root)
             self.assertEqual(result["frames"], 3200)
             self.assertEqual(result["channels"], 2)
@@ -27,7 +27,7 @@ class SeparationMediaTests(unittest.TestCase):
 
     def test_missing_or_short_second_output_cannot_complete(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve(strict=True)
             pair = self.pair(root, 0, background_length=800)
             with self.assertRaises(ValueError):
                 assemble_separation({"chunks": [pair]}, root)
@@ -35,7 +35,7 @@ class SeparationMediaTests(unittest.TestCase):
 
     def test_unexplained_chunk_gap_is_not_filled_with_invented_audio(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve(strict=True)
             first, second = self.pair(root, 0), self.pair(root, 1)
             second["offsetSeconds"] = 0.2
             with self.assertRaises(ValueError):

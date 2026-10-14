@@ -1,3 +1,7 @@
+# VideoLingo 0.1.8 — Windows CI path normalization
+
+Normalizes direct Python test workspaces exactly as the product worker already does, so Windows runner short-path aliases do not cause false containment failures. The v0.1.7 tag fixed media tool setup but stopped at these two test-fixture failures; no Release was published. Product media behavior, prior bounded acceptance and known limitations are unchanged.
+
 # VideoLingo 0.1.7 — Windows media tool setup
 
 Prepares the locked FFmpeg/FFprobe and Deno tools before tests on clean Windows runners. The v0.1.6 tag's CI exposed missing ffprobe; it did not publish a Release and is retained unchanged. Business behavior and the bounded 0.1.6 subtitle/export/voice-preview acceptance below are unchanged; full dubbing and installed/Catalog acceptance retain their stated limits.

@@ -4,7 +4,7 @@
 
 ## 当前 Windows 交付准备（2026-10-15）
 
-当前待发布补丁为 0.1.7：v0.1.6 的 Windows CI 在媒体测试中找不到 ffprobe，未生成公开 Release；保留原 tag，不移动它。初始化现在也执行既有 `prepare-media.mjs`，在测试前准备锁定来源的 FFmpeg/FFprobe 与 Deno。业务代码与下述 0.1.6 验收输入未改变，结果按其实际范围复用；不重复 AI 调用冒充新增覆盖。
+当前待发布补丁为 0.1.8。v0.1.6 的 Windows CI 在媒体测试中找不到 ffprobe；0.1.7 初始化加入既有 `prepare-media.mjs` 后该问题消失，但两个直接调用 Python 函数的测试将 `RUNNER~1` 短路径与已解析的长路径混用。产品 `core.nimi_worker.main` 原本已对工作目录执行 `resolve(strict=True)`；0.1.8 仅让测试夹具遵循同一入口前置条件，不削弱路径包含检查。两个失败 tag 均保留且未发布 Release。业务代码与下述 0.1.6 验收输入未改变，结果按其实际范围复用；不重复 AI 调用冒充新增覆盖。
 
 既有未提交的平台接入、音频资源与会话恢复改动已保存为 `3a8621f`，类型检查与 48 项测试通过。当前 0.1.6 采用 npm 正式 SDK/Kit/native 0.21.0、App Tools 0.13.1、Nimi Coding 0.6.5 和 Electron 44；Vite 8 满足当前工具依赖。0.1.5 冻结候选及其历史记录保留，不以新字节替换。当前组合的安装态、公开发布和 Catalog 验收仍需实际完成。
 
