@@ -4,7 +4,7 @@
 
 ## 当前 Windows 交付状态（2026-10-15）
 
-当前已发布 [0.1.8](https://github.com/nimiplatform/VideoLingo/releases/tag/v0.1.8)，完整分支 CI 与正式 tag 工作流均成功。Registry 已下载核验许可证、摘要和构建 provenance，[PR 109](https://github.com/nimiplatform/nimi-app-registry/pull/109) 的候选检查通过，等待具体人工准入决定，尚未进入 Catalog。v0.1.6 的 Windows CI 在媒体测试中找不到 ffprobe；0.1.7 初始化加入既有 `prepare-media.mjs` 后该问题消失，但两个直接调用 Python 函数的测试将 `RUNNER~1` 短路径与已解析的长路径混用。产品 `core.nimi_worker.main` 原本已对工作目录执行 `resolve(strict=True)`；0.1.8 仅让测试夹具遵循同一入口前置条件，不削弱路径包含检查。两个失败 tag 均保留且未发布 Release。业务代码与下述 0.1.6 验收输入未改变，结果按其实际范围复用；不重复 AI 调用冒充新增覆盖。
+当前已发布 [0.1.8](https://github.com/nimiplatform/VideoLingo/releases/tag/v0.1.8)，完整分支 CI 与正式 tag 工作流均成功。Registry 已下载核验许可证、摘要和构建 provenance，[PR 109](https://github.com/nimiplatform/nimi-app-registry/pull/109) 的候选检查通过；用户已明确决定暂缓准入，先修复配音前置问题，尚未进入 Catalog。v0.1.6 的 Windows CI 在媒体测试中找不到 ffprobe；0.1.7 初始化加入既有 `prepare-media.mjs` 后该问题消失，但两个直接调用 Python 函数的测试将 `RUNNER~1` 短路径与已解析的长路径混用。产品 `core.nimi_worker.main` 原本已对工作目录执行 `resolve(strict=True)`；0.1.8 仅让测试夹具遵循同一入口前置条件，不削弱路径包含检查。两个失败 tag 均保留且未发布 Release。业务代码与下述 0.1.6 验收输入未改变，结果按其实际范围复用；不重复 AI 调用冒充新增覆盖。
 
 既有未提交的平台接入、音频资源与会话恢复改动已保存为 `3a8621f`，类型检查与 48 项测试通过。0.1.6 阶段升级到 npm 正式 SDK/Kit/native 0.21.0、App Tools 0.13.1、Nimi Coding 0.6.5 和 Electron 44，当前 0.1.8 继续使用该组合；Vite 8 满足当前工具依赖。0.1.5 冻结候选及其历史记录保留，不以新字节替换。当前组合的安装态和 Catalog 验收仍待准入后实际完成。
 
@@ -15,8 +15,8 @@ Windows 生产构建、冻结后端检查和生产打包已通过；冻结检查
 预置音色独立路径：通过公开配置明确选择 `qwen3-tts-flash` / Cherry，Job `01M4Y86MQKZZ37FPJCS5YYQGQS` 完成，4.16 秒、24 kHz、单声道试听播放到结尾且刷新后仍可用。没有用这份试听冒充整片配音或参考音色合成。
 
 当前限制分开记录：
-- 完整分离/混音在当前固定服务环境下为 NOT-VERIFIED。Home 对既有 HTDemucs 配置执行“仅准备”时，CUDA 13 用户态依赖失败：`LOCAL_ENVIRONMENT_DEPENDENCY_JOB_FAILED` / `host accelerator profile does not admit Windows NVIDIA CUDA dependency`。普通用户的 nvidia-smi 能识别 RTX 5090、驱动 610.88；普通用户在 System32 工作目录下的 Go LookPath 与显卡查询也成功，不能把当前目录查找假设当成已证实根因。固定服务的 GPU 探测失败原因尚未确认，不据此断言硬件不支持或修改驱动/安全配置。
-- 参考音色试验中的 Qwen Audio 3.0 拒绝本地字节输入；现有目录声明该克隆工作流只接收公共 URL，不能将其描述为字节路径成功。随后明确选择支持字节输入的 `qwen3-tts-vc` 并清空该模型不接收的可选参考原文；声音创建 Job `01M4Y81A4F2GBC6DM4HXFCBZYH` 成功，但合成 Job `01M4Y81C4M8VV1W0XRS9HPC9VS` 对实际模型 `qwen3-tts-vc-2026-01-22` 返回 `AI_MODEL_NOT_FOUND`。保留失败与新声音资产，不自动切换模型、不伪造声音产物。
+- 完整分离/混音在当前固定服务环境下为 NOT-VERIFIED。Home 对既有 HTDemucs 配置执行“仅准备”时，CUDA 13 用户态依赖失败：`LOCAL_ENVIRONMENT_DEPENDENCY_JOB_FAILED` / `host accelerator profile does not admit Windows NVIDIA CUDA dependency`。普通用户的 nvidia-smi 能识别 RTX 5090、驱动 610.88；普通用户在 System32 工作目录下的 Go LookPath 与显卡查询也成功，不能把当前目录查找假设当成已证实根因。固定服务的 GPU 探测失败原因尚未确认，不据此断言硬件不支持或修改驱动/安全配置。进一步在普通用户下对比 Go Run 与捕获输出，均在约 40–50 ms 成功。一次性系统账户对比诊断已准备，但 Windows 将管理员授权记录为用户取消，诊断尚未执行；无驱动、服务或计划任务被更改。需本人确认 UAC 后取得服务上下文证据，再修复并重跑实际分离/配音。
+- 参考音色试验中的 Qwen Audio 3.0 拒绝本地字节输入；现有目录声明该克隆工作流只接收公共 URL，不能将其描述为字节路径成功。随后明确选择支持字节输入的 `qwen3-tts-vc` 并清空该模型不接收的可选参考原文；声音创建 Job `01M4Y81A4F2GBC6DM4HXFCBZYH` 成功，但合成 Job `01M4Y81C4M8VV1W0XRS9HPC9VS` 对实际模型 `qwen3-tts-vc-2026-01-22` 返回 `AI_MODEL_NOT_FOUND`。保留失败与新声音资产，不自动切换模型、不伪造声音产物。2026-10-15 进一步通过 Chrome 核对[官方公告 118434](https://www.aliyun.com/notice/118434)：该准确模型 ID 已在 2026-10-10 下线，并非待修复的 endpoint 拼写问题。Nimi 本地提交 `8b10b9f64` 移除同一公告中失效的 Qwen3 VC/VD/Instruct 和日期版 Flash 目录入口及失效克隆绑定，保留仍可用的无日期 Flash、Qwen Audio、CosyVoice 和既有声音资产；不自动改绑资产或配置。目录生成/漂移检查、25 项生成器测试、目录解析/AI 服务/Connector 包测试及相关 Runtime Agent 绑定测试通过。旧配置拒绝执行、资产重开及不改绑已覆盖；这些是源码检查，当前安装的 rc.2 尚未包含修复，没有重建或公开发布 Nimi。
 - 上述都是固定服务监督的开发 App 验收；新包的安装态、Catalog、其他平台及新的完整配音仍不由这些结果证明。历史长片与完整配音结果仅在其原组合范围内复用，字幕和声音质量仍需人工校对。Nimi 0.2.5-rc.2 仅为本机候选，未公开发布。
 
 ## 历史正式依赖升级与验收（2026-10-11）
