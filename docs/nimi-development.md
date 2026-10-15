@@ -4,7 +4,7 @@
 
 ## 当前 Windows 交付状态（2026-10-15）
 
-当前源码准备为 0.1.9，新增修复仅是旧 Job 过期后的明确恢复：原项目继续时收到 Runtime 的 `ai-media-job-not-found`，App 原分类只识别通用 `NOT_FOUND`，因此未进入已有恢复流程。现在同时识别准确的 `AI_MEDIA_JOB_NOT_FOUND`，保留已完成块，只在用户显式继续时废弃缺失引用并重提未完成部分；会话、授权和模型不存在错误不会触发重提。新增用例在旧代码实际失败，修复后类型检查及全部 57 项 App 测试通过。
+当前 0.1.9 唯一 Windows 本地候选来自已推送提交 `1a257ca`，新增修复仅是旧 Job 过期后的明确恢复：原项目继续时收到 Runtime 的 `ai-media-job-not-found`，App 原分类只识别通用 `NOT_FOUND`，因此未进入已有恢复流程。现在同时识别准确的 `AI_MEDIA_JOB_NOT_FOUND`，保留已完成块，只在用户显式继续时废弃缺失引用并重提未完成部分；会话、授权和模型不存在错误不会触发重提。新增用例在旧代码实际失败，修复后类型检查及全部 57 项 App 测试通过。`check --production`、Windows 生产构建、冻结后端检查和 `pack --production` 均通过；冻结检查覆盖 UTF-8、真实 Streamlit 健康、任务表、loopback 下载和 Host 拒绝传播，不代替安装业务验收。包 `dist/nimi-app/ai.nimi.videolingo-0.1.9-windows-x86_64.nimiapp` 为 1,082,900,412 bytes，SHA-256 `3bf6689dd1c91015417a70f14a8a8bc30ce2c86d18497b69cdd4f218a1289d65`，姿态 production-unsigned / asInvoker。此次仅构建一次 App 候选，未再构建或安装 Nimi，未发布 0.1.9 或提交新 Registry 候选；等待桌面可用后集中执行 Home 导入、安装业务及原生导出。
 
 用户已安装 Nimi 0.2.5-rc.6，固定服务路径和签名身份匹配 `5d65b10bfdbc2ff2a70dde5e88a1106a8ad426a6`。通过原 Desktop 监督注册和 App 自身 CDP，仅继续原项目 `b42075e3-07b7-4027-8bcc-9efa10eac1ef`，未重跑字幕。HTDemucs Job `01M4Z7PRH870TY6H14GG14ED9T` 实际完成，随后 12 个 `qwen3-tts-flash` / Cherry 合成 Job 完成，工作流为 completed 2/2。成片从头播放到 50.641995 秒结尾、解码 1519 帧且无媒体错误，页面刷新后项目、12 段音频和成片保留。通过播放器已有媒体 URL 读取的 `.nimi/local/exports/rc6-dubbed-preview.mp4` 为 2,223,672 bytes，H.264 640×480 / AAC 44100 Hz 双声道，完整 FFmpeg 解码通过。该读取只用于媒体校验，不是原生导出；保存框被全屏程序遮挡，本次原生导出尚未完成。原片自带字幕与新烧录字幕叠加，内容及音质仍需人工校对。
 
