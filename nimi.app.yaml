@@ -1,6 +1,6 @@
 app_id: ai.nimi.videolingo
 display_name: VideoLingo
-version: 0.1.8
+version: 0.1.9
 profile: standalone
 manifest_role: submitted-input
 app_access:

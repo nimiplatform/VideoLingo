@@ -51,8 +51,8 @@ test('separation normalizes raw audio before an explicit mono-to-stereo conversi
 });
 
 for (const kind of ['transcribe', 'separate'] as const) {
-  test(`${kind} expires only its missing Job and preserves completed blocks`, async () => {
-    const f = fixture(kind, 'NOT_FOUND');
+  for (const reason of ['NOT_FOUND', 'AI_MEDIA_JOB_NOT_FOUND', 'ai-media-job-not-found']) test(`${kind} expires only its missing Job and preserves completed blocks: ${reason}`, async () => {
+    const f = fixture(kind, reason);
     await (kind === 'transcribe' ? f.app.start(id, 'en') : f.app.separate(id));
     await f.app.settled(id);
     assert.deepEqual(f.counts(), { gets: 1, submissions: 1 });
@@ -61,14 +61,14 @@ for (const kind of ['transcribe', 'separate'] as const) {
     if (kind === 'separate') assert.equal(f.read().separation!.pairs[0]!.jobId, 'done');
     assert.match(kind === 'transcribe' ? f.read().error! : f.read().separation!.error!, /Submission deliberately refused/);
   });
-  for (const reason of ['SESSION_INVALID', 'APP_AUTHORIZATION_DENIED']) test(`${kind} preserves the Job on ${reason}`, async () => {
+  for (const reason of ['SESSION_INVALID', 'APP_AUTHORIZATION_DENIED', 'AI_MODEL_NOT_FOUND']) test(`${kind} preserves the Job on ${reason}`, async () => {
     const f = fixture(kind, reason);
     await assert.rejects(kind === 'transcribe' ? f.app.start(id, 'en') : f.app.separate(id));
     assert.deepEqual(f.counts(), { gets: 1, submissions: 0 });
     assert.equal(kind === 'transcribe' ? f.read().runtimeJobId : f.read().separation!.runtimeJobId, 'expired');
   });
   test(`${kind} allows an inactive missing reference to be stopped without inference`, async () => {
-    const f = fixture(kind, 'NOT_FOUND');
+    const f = fixture(kind, 'AI_MEDIA_JOB_NOT_FOUND');
     await f.app.control(id, 'cancel');
     assert.equal(kind === 'transcribe' ? f.read().runtimeJobId : f.read().separation!.runtimeJobId, undefined);
     assert.equal(f.read().chunks[0]!.resultPath, 'completed0');

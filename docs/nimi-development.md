@@ -4,6 +4,12 @@
 
 ## 当前 Windows 交付状态（2026-10-15）
 
+当前源码准备为 0.1.9，新增修复仅是旧 Job 过期后的明确恢复：原项目继续时收到 Runtime 的 `ai-media-job-not-found`，App 原分类只识别通用 `NOT_FOUND`，因此未进入已有恢复流程。现在同时识别准确的 `AI_MEDIA_JOB_NOT_FOUND`，保留已完成块，只在用户显式继续时废弃缺失引用并重提未完成部分；会话、授权和模型不存在错误不会触发重提。新增用例在旧代码实际失败，修复后类型检查及全部 57 项 App 测试通过。
+
+用户已安装 Nimi 0.2.5-rc.6，固定服务路径和签名身份匹配 `5d65b10bfdbc2ff2a70dde5e88a1106a8ad426a6`。通过原 Desktop 监督注册和 App 自身 CDP，仅继续原项目 `b42075e3-07b7-4027-8bcc-9efa10eac1ef`，未重跑字幕。HTDemucs Job `01M4Z7PRH870TY6H14GG14ED9T` 实际完成，随后 12 个 `qwen3-tts-flash` / Cherry 合成 Job 完成，工作流为 completed 2/2。成片从头播放到 50.641995 秒结尾、解码 1519 帧且无媒体错误，页面刷新后项目、12 段音频和成片保留。通过播放器已有媒体 URL 读取的 `.nimi/local/exports/rc6-dubbed-preview.mp4` 为 2,223,672 bytes，H.264 640×480 / AAC 44100 Hz 双声道，完整 FFmpeg 解码通过。该读取只用于媒体校验，不是原生导出；保存框被全屏程序遮挡，本次原生导出尚未完成。原片自带字幕与新烧录字幕叠加，内容及音质仍需人工校对。
+
+后续采用开发/CDP → 必要的隔离服务回归 → 一次集中安装验收的顺序，不再逐个 Runtime 问题打包安装。上述 rc.6 的分离与整片预置声音路径已通过开发 App 验收；0.1.9 安装包和 Catalog 仍 NOT-VERIFIED，0.1.8 的 Registry PR 109 保持暂缓。Nimi 修复尚未公开发布，不能把本机结果写成当前公开 Runtime 已支持；原生导出与最终安装验收集中处理。下述各 rc 的失败、诊断和旧结果保留为历史过程，以本段为当前结论。
+
 当前已发布 [0.1.8](https://github.com/nimiplatform/VideoLingo/releases/tag/v0.1.8)，完整分支 CI 与正式 tag 工作流均成功。Registry 已下载核验许可证、摘要和构建 provenance，[PR 109](https://github.com/nimiplatform/nimi-app-registry/pull/109) 的候选检查通过；用户已明确决定暂缓准入，先修复配音前置问题，尚未进入 Catalog。v0.1.6 的 Windows CI 在媒体测试中找不到 ffprobe；0.1.7 初始化加入既有 `prepare-media.mjs` 后该问题消失，但两个直接调用 Python 函数的测试将 `RUNNER~1` 短路径与已解析的长路径混用。产品 `core.nimi_worker.main` 原本已对工作目录执行 `resolve(strict=True)`；0.1.8 仅让测试夹具遵循同一入口前置条件，不削弱路径包含检查。两个失败 tag 均保留且未发布 Release。业务代码与下述 0.1.6 验收输入未改变，结果按其实际范围复用；不重复 AI 调用冒充新增覆盖。
 
 既有未提交的平台接入、音频资源与会话恢复改动已保存为 `3a8621f`，类型检查与 48 项测试通过。0.1.6 阶段升级到 npm 正式 SDK/Kit/native 0.21.0、App Tools 0.13.1、Nimi Coding 0.6.5 和 Electron 44，当前 0.1.8 继续使用该组合；Vite 8 满足当前工具依赖。0.1.5 冻结候选及其历史记录保留，不以新字节替换。当前组合的安装态和 Catalog 验收仍待准入后实际完成。

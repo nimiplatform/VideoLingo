@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { createNimiError } from '@nimiplatform/sdk/types';
 import { ModelOperations } from '../src-electron/model-operations.ts';
 
-for (const reason of ['NOT_FOUND', 'SESSION_INVALID', 'APP_AUTHORIZATION_DENIED']) {
+for (const reason of ['NOT_FOUND', 'AI_MEDIA_JOB_NOT_FOUND', 'ai-media-job-not-found', 'SESSION_INVALID', 'APP_AUTHORIZATION_DENIED', 'AI_MODEL_NOT_FOUND']) {
   test(`only explicit missing Job permits a new submission: ${reason}`, async () => {
     const spec = { type: 'text-annotate', language: 'en', texts: ['Source'] };
     const key = createHash('sha256').update(JSON.stringify(spec)).digest('hex');
@@ -16,8 +16,9 @@ for (const reason of ['NOT_FOUND', 'SESSION_INVALID', 'APP_AUTHORIZATION_DENIED'
     } as never } }, { workspace: '.', assetPrefix: '', signal: new AbortController().signal, guard: () => {}, onVoice: async () => {}, onJob: async () => {},
       onMissingJob: async id => { assert.equal(id, 'expired-job'); invalidated++; } });
     await assert.rejects(model.annotationHandler(jobs, async () => {}).annotate!({ language: spec.language, texts: spec.texts }));
-    assert.equal(submitted, reason === 'NOT_FOUND' ? 1 : 0);
+    const missing = ['NOT_FOUND', 'AI_MEDIA_JOB_NOT_FOUND', 'ai-media-job-not-found'].includes(reason);
+    assert.equal(submitted, missing ? 1 : 0);
     assert.equal(invalidated, submitted);
-    assert.equal(jobs[key], reason === 'NOT_FOUND' ? undefined : 'expired-job');
+    assert.equal(jobs[key], missing ? undefined : 'expired-job');
   });
 }

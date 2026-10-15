@@ -1,3 +1,9 @@
+# VideoLingo 0.1.9 — Resume expired media jobs
+
+Recognizes Runtime's explicit `AI_MEDIA_JOB_NOT_FOUND` response when resuming a retained Job. An explicit continuation clears only that missing reference and submits the unfinished work; completed blocks remain intact. Session, authorization and model-not-found failures still preserve the reference and do not trigger a replacement request.
+
+Type checking and all 57 App tests pass. On the locally installed Nimi 0.2.5-rc.6 Runtime, the Desktop-supervised development App resumed its original short-film project, completed HTDemucs separation and 12 Qwen3 Flash / Cherry speech segments, and produced a 50.641995-second video with mixed background audio. Full playback, refresh retention and complete media decoding passed. This is development-App acceptance, not installation or Catalog acceptance. The Nimi fixes remain local candidates; retired Qwen3 VC voices are not automatically reassigned. Native export and the consolidated 0.1.9 installation remain pending.
+
 # VideoLingo 0.1.8 — Windows CI path normalization
 
 Normalizes direct Python test workspaces exactly as the product worker already does, so Windows runner short-path aliases do not cause false containment failures. The v0.1.7 tag fixed media tool setup but stopped at these two test-fixture failures; no Release was published. Product media behavior, prior bounded acceptance and known limitations are unchanged.

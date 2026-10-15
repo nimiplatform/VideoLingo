@@ -2,7 +2,8 @@ import type { NimiLocalAppScenarioJob } from '@nimiplatform/sdk/app';
 
 export function isMissingJob(error: unknown): boolean {
   const value = error as { reasonCode?: string; code?: string };
-  return (value?.reasonCode || value?.code || '').toUpperCase().replaceAll('-', '_') === 'NOT_FOUND';
+  const reason = (value?.reasonCode || value?.code || '').toUpperCase().replaceAll('-', '_');
+  return reason === 'NOT_FOUND' || reason === 'AI_MEDIA_JOB_NOT_FOUND';
 }
 
 export async function retainedJob(
