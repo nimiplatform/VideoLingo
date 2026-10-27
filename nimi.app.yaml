@@ -17,8 +17,7 @@ storage_policy:
   kind: nimi-mediated-default
 metadata:
   summary: VideoLingo的Nimi生态适配：媒体导入、字幕校对、配音与批量处理。生成内容需要人工校对。
-  icon: docs/public/apple-touch-icon.png
-  readme: docs/nimi-development.md
+  icon: docs/public/web-app-manifest-512x512.png
   release_notes: RELEASE_NOTES.md
   author: VideoLingo contributors
 local_development:

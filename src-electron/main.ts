@@ -29,6 +29,8 @@ const {
 const APP_ID = 'ai.nimi.videolingo';
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const sourceRoot = path.resolve(currentDir, '..');
+// Native presentation is separate from metadata.icon artwork shown in Nimi Home.
+const nativeAppIconPath = path.join(sourceRoot, 'assets', 'native', process.platform === 'win32' ? 'windows.ico' : process.platform === 'darwin' ? 'macos.png' : 'app.png');
 const appRoot = __NIMI_ELECTRON_PRODUCTION__ ? path.join(process.resourcesPath, 'videolingo') : sourceRoot;
 let backend: ChildProcess | undefined;
 let projects: Projects | undefined;
@@ -41,6 +43,7 @@ Menu.setApplicationMenu(null);
 registerNimiElectronAppAssetProtocolScheme(protocol);
 
 void app.whenReady().then(async () => {
+  if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(nativeAppIconPath);
   const developmentUrl = readDevelopmentRendererUrl();
   const rendererUrl = developmentUrl || await startPackagedRenderer();
   const allowedRendererUrls = [rendererUrl];
@@ -124,7 +127,8 @@ void app.whenReady().then(async () => {
   batches = new Batches(bridge.services.storage, projects);
   await createMainWindow();
   async function createMainWindow() {
-    const window = new BrowserWindow({ width: 1180, height: 850, minWidth: 540, minHeight: 560, title: 'VideoLingo', autoHideMenuBar: true,
+    const window = new BrowserWindow({
+    icon: nativeAppIconPath, width: 1180, height: 850, minWidth: 540, minHeight: 560, title: 'VideoLingo', autoHideMenuBar: true,
       webPreferences: { preload: path.join(currentDir, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
     window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     window.webContents.on('will-navigate', (event, url) => { if (!isAllowedElectronRendererUrl(url, allowedRendererUrls)) event.preventDefault(); });

@@ -1,3 +1,9 @@
+Current development dependencies are SDK 0.22.2, Kit/native 0.22.1, App Tools 0.14.0 and Nimi Coding 0.7.0. The checked-in pnpm lock resolves these packages from the public registry. Run `pnpm install --frozen-lockfile`, `pnpm exec nimi-app check`, then `pnpm dev` with a matching source-built Nimi Runtime and Home. App versions and published App releases are unchanged. Earlier versioned notes retain their original acceptance scope. Home uses the App-owned root `NIMI_APP.md`; this README remains developer documentation.
+
+Upgrade verification: public-registry installation, frozen-lockfile installation, App Tools checks and the applicable type/Host build checks passed. Desktop-supervised macOS development opened the connected video-translation workspace. New model-output journeys and packaged installation were not rerun; earlier evidence below retains its stated versions and scope.
+
+[App introduction and usage](NIMI_APP.md)
+
 > **Nimi fork:** Use [Nimi development and delivery](docs/nimi-development.md) for this Windows Electron/Streamlit App. AI execution and model credentials belong to Nimi; the upstream standalone setup and provider-key instructions retained below are historical reference, not this fork's launch path.
 
 <div align="center">
@@ -379,3 +385,5 @@ full translation, source separation and dubbing remain **NOT-VERIFIED**.
 Only admission preparation has been performed. No VideoLingo product rewrite,
 provider bypass, estimated subtitle timing, release, Registry submission, remote
 setting change or push was performed.
+
+**Local chrome teardown patch — 2026-10-26.** The explicit `pnpm-workspace.yaml` override selects the complete Kit 0.21.1 development archive at `.nimi/local/platform-icons/nimiplatform-kit-0.21.1-chrome.tgz`. It backports canonical fix `6b3ef1116` onto published Kit 0.21.0: window/WebContents destruction cleanup is idempotent and never reads a destroyed BrowserWindow getter. SDK 0.21, public chrome declarations and native carrier dependencies retain their existing versions. This archive is unpublished; clean development checkouts need the same complete archive, and production preflight still requires registry resolutions. App-specific business journeys and Windows interaction with this patch remain NOT-VERIFIED.
