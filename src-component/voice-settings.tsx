@@ -1,13 +1,13 @@
+import { WorkspaceFileInput } from './workspace-files.js';
 import React, { useEffect, useState } from 'react';
 import { Button } from '@nimiplatform/kit/ui';
-import { openNimiLocalAppAssetMediaUrl } from '@nimiplatform/kit/shell/renderer/bridge';
-import type { NimiLocalAppClient } from '@nimiplatform/sdk/app';
+import type { VideoLingoPlatform } from './platform.js';
 import { errorText, type DubbingInput, type VideoLingoProject } from '../src-electron/project-types.js';
 import { translator } from './localization.js';
 
-export function VoiceSettings({ project, value, change, client, locale, disabled, configure, onBusy }: {
-  project: VideoLingoProject; value: DubbingInput; change: (value: DubbingInput) => void; client: NimiLocalAppClient;
-  locale: string; disabled: boolean; configure: (capability: string) => void; onBusy?: (busy: boolean) => void;
+export function VoiceSettings({ project, value, change, platform, locale, disabled, configure, onBusy, inputScope = 'project' }: {
+  project: VideoLingoProject; value: DubbingInput; change: (value: DubbingInput) => void; platform: VideoLingoPlatform;
+  inputScope?: string; locale: string; disabled: boolean; configure: (capability: string) => void; onBusy?: (busy: boolean) => void;
 }) {
   const t = translator(locale), patch = (fields: Partial<DubbingInput>) => change({ ...value, ...fields });
   const [voices, setVoices] = useState<{ id: string; label: string }[]>([]);
@@ -17,12 +17,7 @@ export function VoiceSettings({ project, value, change, client, locale, disabled
   useEffect(() => {
     let active = true; setVoices([]); setError('');
     const load = async () => {
-      if (value.voiceKind === 'preset') {
-        const result = await client.aiConfig.listOptions({ kind: 'preset-voices' });
-        return result.kind === 'preset-voices' ? result.options.map(voice => ({ id: voice.voiceId, label: voice.name })) : [];
-      }
-      if (value.voiceKind === 'asset') return (await client.ai.voiceAssets.list({ pageSize: 100 })).assets
-        .filter(asset => asset.status === 'active').map(asset => ({ id: asset.voiceAssetId, label: asset.voiceAssetId }));
+      if (value.voiceKind === 'preset' || value.voiceKind === 'asset') return platform.listVoices(value.voiceKind);
       return [];
     };
     void load().then(result => { if (active) setVoices(result); }).catch(error => { if (active) setError(errorText(error)); });
@@ -31,7 +26,7 @@ export function VoiceSettings({ project, value, change, client, locale, disabled
   useEffect(() => {
     let active = true, revoke: (() => Promise<void>) | undefined; setReferenceUrl('');
     if (value.voiceKind === 'reference' && value.referenceMode === 'provided' && value.referenceAssetPath) {
-      void openNimiLocalAppAssetMediaUrl(value.referenceAssetPath).then(handle => {
+      void platform.openMedia(value.referenceAssetPath).then(handle => {
         revoke = handle.revoke; if (active) setReferenceUrl(handle.url); else void handle.revoke();
       }).catch(error => { if (active) setError(errorText(error)); });
     }
@@ -56,13 +51,13 @@ export function VoiceSettings({ project, value, change, client, locale, disabled
         <option value="provided">{t('Uploaded reference audio', '上传的参考音频')}</option></select></label>
         <Button tone="secondary" onClick={() => configure('voice.create')}>{t('Configure voice creation', '配置音色创建')}</Button></div>
       {value.referenceMode === 'provided' && <>
-        <label>{t('Voice reference audio', '声音参考音频')} <input type="file" accept=".wav,.mp3" aria-label="voice-reference-file" disabled={disabled || busy} onChange={event => {
-          const file = event.target.files?.[0]; if (!file) return; setBusy(true); setError('');
+        <label>{t('Voice reference audio', '声音参考音频')} <WorkspaceFileInput inputKey={`voice-reference/${inputScope}/${project.id}`} pickerLabel={t('Choose voice reference', '选择参考音频')} accept=".wav,.mp3" aria-label="voice-reference-file" disabled={disabled || busy} onFiles={files => {
+          const file = files[0]; if (!file) return; setBusy(true); setError('');
           void (async () => {
             const extension = file.name.split('.').pop()?.toLowerCase();
             if (!file.size || file.size > 20 * 1024 ** 2 || !['wav', 'mp3'].includes(extension || '')) throw new Error('Choose a WAV or MP3 reference up to 20 MiB');
             const relativePath = `projects/${project.id}/voice-reference/${crypto.randomUUID()}.${extension}`;
-            await client.storage.assets.write({ relativePath, body: file, mediaType: extension === 'mp3' ? 'audio/mpeg' : 'audio/wav' });
+            await platform.storage.assets.write({ relativePath, body: file, size: file.size, mediaType: extension === 'mp3' ? 'audio/mpeg' : 'audio/wav' });
             patch({ referenceAssetPath: relativePath });
           })().catch(error => setError(errorText(error))).finally(() => setBusy(false));
         }} /></label>

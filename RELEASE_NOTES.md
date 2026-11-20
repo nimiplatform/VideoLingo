@@ -1,3 +1,11 @@
+# VideoLingo 0.2.0 — Upstream v3.2.0 subtitle typesetting, PC workspace integration, and hosted Web candidate
+
+Syncs upstream `Huanshere/VideoLingo` `main` (`d2d5a046d97526ae4950294cc5663ad520b22f52`, v3.2.0 series) while preserving Nimi-mediated AI routing, Host-owned project/batch persistence, subtitle proofreading, stage recovery and bounded media processing:
+
+- Adopts upstream v3.2.0 rendered-width bilingual subtitle splitting and HarfBuzz/BudouX/fontTools ASS typesetting (`core/utils/typeset.py`, `subtitle_width.py`, `subtitle_style.py`, `subtitle_fonts.py`) with bundled SIL OFL subtitle fonts (`fonts/` and `fonts/licenses/`), including cross-drive Windows `fontsdir` staging and user-local font cache seeding for packaged `.nimiapp` runs.
+- Upgrades Nimi dependencies to published npm `pre` packages (`@nimiplatform/app-tools` `0.16.0-rc.10`, `@nimiplatform/sdk` `0.24.0-rc.10`, `@nimiplatform/kit` and Windows native binding `0.24.0-rc.16`, `@nimiplatform/nimi-coding` `0.7.0`, Electron `45.4.1`) with frozen public registry lockfiles.
+- Exposes `videolingo.workspace.v1` (`integration.provide` / `integration.consume`) on the PC App so authorized Web (`public_slug: videolingo`, `build:web:release`) and local Android companions can inspect, edit, export and run workflows against the original PC projects without moving AI credentials or media storage into the browser. Bounded subtitle/text/workbook exports use standard browser downloads while large media exports retain streaming Save File handles. Ordinary Web users require this 0.2.0+ PC version (the previously admitted Catalog 0.1.9 package only declared `runtime.consume`).
+
 # VideoLingo 0.1.9 — Resume expired media jobs
 
 Recognizes Runtime's explicit `AI_MEDIA_JOB_NOT_FOUND` response when resuming a retained Job. An explicit continuation clears only that missing reference and submits the unfinished work; completed blocks remain intact. Session, authorization and model-not-found failures still preserve the reference and do not trigger a replacement request.

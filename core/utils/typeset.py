@@ -36,9 +36,27 @@ import sys
 import unicodedata
 from dataclasses import dataclass, field, replace
 
+import shutil
 import uharfbuzz as hb
 
-FONTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "fonts")
+_BUNDLED_FONTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "fonts")
+
+
+def _init_fonts_dir():
+    override = os.environ.get("VIDEOLINGO_FONTS_DIR")
+    if not override:
+        return _BUNDLED_FONTS_DIR
+    os.makedirs(override, exist_ok=True)
+    if os.path.isdir(_BUNDLED_FONTS_DIR):
+        for entry in os.listdir(_BUNDLED_FONTS_DIR):
+            src = os.path.join(_BUNDLED_FONTS_DIR, entry)
+            dst = os.path.join(override, entry)
+            if os.path.isfile(src) and not os.path.isfile(dst):
+                shutil.copy2(src, dst)
+    return override
+
+
+FONTS_DIR = _init_fonts_dir()
 
 MAIN = "main"            # translation: yellow on a translucent box, upper block
 SECONDARY = "secondary"  # original speech: white with an outline, bottom block

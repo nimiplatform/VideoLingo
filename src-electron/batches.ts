@@ -5,7 +5,7 @@ import { extractNimiErrorFields } from '@nimiplatform/sdk/types';
 import { errorText, projectId, sourceLanguageFor, type DubbingInput, type FailureDetails, type VideoLingoProject } from './project-types.js';
 import type { Projects } from './projects.js';
 import { subtitleFiles, subtitleKey } from './subtitles.js';
-import { businessSettings, DEFAULT_BUSINESS_SETTINGS, translationSettings, validateBusinessSettings, type BusinessSettings } from './business-settings.js';
+import { businessSettings, DEFAULT_BUSINESS_SETTINGS, LEGACY_DEFAULT_BUSINESS_SETTINGS, translationSettings, validateBusinessSettings, type BusinessSettings } from './business-settings.js';
 
 export type BatchStep = 'transcribe' | 'nlp' | 'translate' | 'subtitle-video' | 'separate' | 'dub';
 export type BatchItemInput = { projectId: string; sourceLanguage: string; targetLanguage: string; dubbing?: DubbingInput; burnSubtitles: boolean; vocalEnhancement?: boolean; settings?: BusinessSettings };
@@ -181,7 +181,7 @@ export class Batches {
           } else if (step === 'translate') {
             if (project.translation?.state !== 'completed' || project.translation.input.targetLanguage !== item.targetLanguage
               || project.translation.input.reflect !== settings.reflect || (project.translation.input.customTermsAssetPath || '') !== (settings.customTermsAssetPath || '')
-              || JSON.stringify(translationSettings(project.translation.settings || DEFAULT_BUSINESS_SETTINGS)) !== JSON.stringify(translationSettings(settings))) {
+              || JSON.stringify(translationSettings(project.translation.settings || LEGACY_DEFAULT_BUSINESS_SETTINGS)) !== JSON.stringify(translationSettings(settings))) {
               project = await this.finishStage(this.projects.translate(item.projectId, { targetLanguage: item.targetLanguage, reflect: settings.reflect,
                 ...(settings.customTermsAssetPath ? { customTermsAssetPath: settings.customTermsAssetPath } : {}) }, batch.id, settings), item.projectId, batch.id, task);
             }

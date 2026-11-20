@@ -1,10 +1,13 @@
 app_id: ai.nimi.videolingo
+public_slug: videolingo
 display_name: VideoLingo
-version: 0.1.9
+version: 0.2.0
 profile: standalone
 manifest_role: submitted-input
 app_access:
   - runtime.consume
+  - integration.provide
+  - integration.consume
 capability_contract_refs:
   - audio.transcribe
   - audio.separate
@@ -21,8 +24,16 @@ metadata:
   release_notes: RELEASE_NOTES.md
   author: VideoLingo contributors
 local_development:
+  mobile:
+    command: pnpm run dev:android
+  web:
+    command: pnpm run dev:web-renderer
+    local:
+      origin: https://127.0.0.1:4492
+      redirect_uri: https://127.0.0.1:4492/
+      client_id: ai.nimi.videolingo.web.dev
   electron:
-    renderer_origin: http://127.0.0.1:1467
+    renderer_origin: http://127.0.0.1:1471
     host_source_directory: src-electron
 safety_profile:
   intended_audience: general

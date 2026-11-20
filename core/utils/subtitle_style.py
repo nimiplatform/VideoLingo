@@ -225,13 +225,26 @@ def get_typeset_filters(video, source_srt, translation_srt, width, height, kinds
         for script in scripts:
             with open(os.path.join(out_dir, script.name), "w", encoding="utf-8") as handle:
                 handle.write(script.text)
-        # Relative paths: a Windows drive letter would need escaping inside the filter
-        fonts_dir = os.path.relpath(typeset.FONTS_DIR).replace(os.sep, "/")
+        # Relative paths: a Windows drive letter or space needs staging into out_dir/fonts
+        try:
+            rel_fonts = os.path.relpath(typeset.FONTS_DIR).replace(os.sep, "/")
+        except ValueError:
+            rel_fonts = ""
+        if rel_fonts and typeset._PLAIN_PATH.fullmatch(rel_fonts):
+            fonts_dir = rel_fonts
+        else:
+            fonts_dir = f"{out_dir}/fonts"
+            os.makedirs(fonts_dir, exist_ok=True)
+            for filename in set(typeset.FONT_FILES.values()):
+                src = os.path.join(typeset.FONTS_DIR, filename)
+                if os.path.isfile(src):
+                    shutil.copy2(src, os.path.join(fonts_dir, filename))
         return typeset.filter_chain(scripts, fonts_dir, out_dir)
     except Exception as error:  # never lose the video to the typesetter: burn it the plain way
+        from core.nimi_bridge import NimiRequestError
         from core.task_runner import StopTask
 
-        if isinstance(error, StopTask):  # the user stopped the task while a font was downloading
+        if isinstance(error, (StopTask, NimiRequestError)):  # the user stopped the task while a font was downloading
             raise
         rprint(f"[yellow]⚠️ Built-in subtitle typesetting failed ({escape(str(error))}), using the plain subtitles filter[/yellow]")
         return None

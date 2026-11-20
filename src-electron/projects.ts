@@ -13,7 +13,7 @@ import { ModelOperations } from './model-operations.js';
 import { extractNimiErrorFields } from '@nimiplatform/sdk/types';
 import { isMissingJob, retainedJob } from './job-recovery.js';
 import { currentSubtitleRevision, subtitleFiles, subtitleKey, subtitleIssues, subtitleOutputs, SUBTITLE_FILES, SUBTITLE_LIMIT, type SubtitleReview, type SubtitleSaveInput } from './subtitles.js';
-import { businessSettings, DEFAULT_BUSINESS_SETTINGS, pythonBusinessSettings, translationSettings, validateBusinessSettings, type BusinessSettings } from './business-settings.js';
+import { businessSettings, DEFAULT_BUSINESS_SETTINGS, LEGACY_DEFAULT_BUSINESS_SETTINGS, pythonBusinessSettings, translationSettings, validateBusinessSettings, type BusinessSettings } from './business-settings.js';
 
 type Services = { storage: NimiLocalAppClient['storage']; aiConfig: Pick<NimiLocalAppClient['aiConfig'], 'get'>; ai: Pick<NimiLocalAppAIConsumptionClient, 'scenarioJobs' | 'text' | 'artifacts'> };
 type Activity = { runId: string; epoch: number; abort: AbortController; pause: boolean; runtimeJobId?: string; done?: Promise<void> };
@@ -803,7 +803,7 @@ export class Projects {
       const settings = validateBusinessSettings(runSettings || businessSettings(project));
       const parameters = translationSettings(settings);
       const key = createHash('sha256').update(JSON.stringify({ input, textSelection, annotationSelection, source: project.nlp.outputPath,
-        ...(JSON.stringify(parameters) === JSON.stringify(translationSettings(DEFAULT_BUSINESS_SETTINGS)) ? {} : { parameters }) })).digest('hex');
+        ...(JSON.stringify(parameters) === JSON.stringify(translationSettings(LEGACY_DEFAULT_BUSINESS_SETTINGS)) ? {} : { parameters }) })).digest('hex');
       if (project.translation?.runtimeJobId && project.translation.key !== key) {
         const previous = (await this.services.ai.scenarioJobs.get(project.translation.runtimeJobId)).job;
         if (!['completed', 'failed', 'canceled', 'timeout'].includes(previous.status)) throw new Error('Stop the existing translation analysis Job first');
@@ -1000,7 +1000,7 @@ export class Projects {
         stage.step = String(input.stage); await this.checkpoint(project, task); return { saved: true };
       } });
       for (const relative of result.files) {
-        if (!['output/dub.mp3', 'output/dub.srt', 'output/dub_with_background.wav', 'output/audio/tts_tasks.xlsx', 'output/output_dub.mp4'].includes(relative)) throw new Error('Unexpected dubbing output');
+        if (!['output/dub.mp3', 'output/dub.srt', 'output/dub_src.srt', 'output/dub_with_background.wav', 'output/audio/tts_tasks.xlsx', 'output/output_dub.mp4'].includes(relative)) throw new Error('Unexpected dubbing output');
         const destination = `${prefix}/${relative}`;
         const mediaType = relative.endsWith('.mp4') ? 'video/mp4' : relative.endsWith('.mp3') ? 'audio/mpeg' : relative.endsWith('.wav') ? 'audio/wav' : relative.endsWith('.srt') ? 'text/plain' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
         await this.importFile(workspace, path.join(workspace, relative), destination, mediaType, task.epoch);

@@ -17,3 +17,6 @@ yt-dlp==2026.8.19
 pyinstaller>=6.16,<7
 deno==2.8.1
 yt-dlp-ejs==0.8.0
+uharfbuzz>=0.57,<1
+budoux>=0.10,<0.11
+fonttools>=4.68,<5

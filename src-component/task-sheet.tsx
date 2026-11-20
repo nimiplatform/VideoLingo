@@ -1,3 +1,4 @@
+import { WorkspaceFileInput, useWorkspaceDraft } from './workspace-files.js';
 import { dubbingSettingsFor } from '../src-electron/dubbing-settings.js';
 import { translator } from './localization.js';
 import React, { useState } from 'react';
@@ -14,14 +15,15 @@ export function TaskSheetPanel({ locale, disabled, projects, readSheet, importFi
   addItems: (items: (BatchItemInput & { title: string })[]) => void;
 }) {
   const t = translator(locale);
-  const [rows, setRows] = useState<Row[]>([]), [error, setError] = useState(''), [busy, setBusy] = useState(false);
+  const [rows, setRows] = useWorkspaceDraft<Row[]>('task-sheet-rows', () => []), [error, setError] = useState(''), [busy, setBusy] = useState(false);
+  const [open,setOpen]=useWorkspaceDraft('task-sheet-open',()=>false);
   const patch = (number: number, values: Partial<Row>) => setRows(previous => previous.map(row => row.row === number ? { ...row, ...values } : row));
   const perform = async (work: () => Promise<void>) => { setBusy(true); setError(''); try { await work(); } catch (error) { setError(errorText(error)); } finally { setBusy(false); } };
-  return <details><summary>{t('Import the original Excel task sheet', '导入原 Excel 任务表')}</summary>
+  return <details open={open} onToggle={event=>setOpen(event.currentTarget.open)}><summary>{t('Import the original Excel task sheet', '导入原 Excel 任务表')}</summary>
     <p>{t('Columns: Video File, Source Language, Target Language, Dubbing, Status. Blank/Error rows are selected initially. Associate each selected row with its media project, then add it to the queue. This does not start AI.',
       '列名：Video File、Source Language、Target Language、Dubbing、Status。初始选中状态为空或 Error 的行。为每个所选行关联媒体项目后再加入队列，此操作不会开始 AI。')}</p>
-    <input type="file" accept=".xlsx" aria-label="batch-task-sheet" disabled={disabled || busy} onChange={event => {
-      const file = event.target.files?.[0]; if (file) void perform(async () => setRows((await readSheet(file)).rows));
+    <WorkspaceFileInput inputKey="task-sheet" pickerLabel={t('Choose task sheet', '选择任务表')} accept=".xlsx" aria-label="batch-task-sheet" disabled={disabled || busy} onFiles={files => {
+      const file = files[0]; if (file) void perform(async () => setRows((await readSheet(file)).rows));
     }} />
     {rows.map(row => <div key={row.row} className="vl-section">
       <label><input type="checkbox" checked={row.selected} disabled={disabled || busy} onChange={event => patch(row.row, { selected: event.target.checked })} />
@@ -32,8 +34,8 @@ export function TaskSheetPanel({ locale, disabled, projects, readSheet, importFi
         <option value="">{t('Choose a media project', '选择媒体项目')}</option>{projects.filter(project => project.source || project.id === row.projectId).map(project => <option key={project.id} value={project.id}>{project.title}</option>)}</select>
         {row.projectId ? <Button tone="secondary" disabled={busy} onClick={() => void perform(() => openProject(row.projectId!))}>{t('Open project', '打开项目')}</Button>
           : row.isUrl ? <Button tone="secondary" disabled={disabled || busy} onClick={() => void perform(async () => patch(row.row, { projectId: (await beginUrl(row.videoFile)).id }))}>{t('Set up link download', '设置链接下载')}</Button>
-          : <input type="file" aria-label={`sheet-file-${row.row}`} disabled={disabled || busy} onChange={event => {
-            const file = event.target.files?.[0]; if (!file) return;
+          : <WorkspaceFileInput inputKey={`sheet-media/${row.row}`} pickerLabel={t('Choose row media', '选择该行媒体')} aria-label={`sheet-file-${row.row}`} disabled={disabled || busy} onFiles={files => {
+            const file = files[0]; if (!file) return;
             void perform(async () => { if (file.name.toLowerCase() !== row.videoFile.toLowerCase()) throw new Error(`Row ${row.row}: choose ${row.videoFile}`); patch(row.row, { projectId: (await importFile(file)).id }); });
           }} />}
       </div>}

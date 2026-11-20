@@ -1,3 +1,4 @@
+import { WorkspaceFileInput, useWorkspaceDraft } from './workspace-files.js';
 import { translator } from './localization.js';
 import React, { useState } from 'react';
 import { Button } from '@nimiplatform/kit/ui';
@@ -9,9 +10,9 @@ export function DownloadPanel({ project, disabled, locale, uploadCookies, run, s
 }) {
   const t = translator(locale);
   const initial = project.downloadInput;
-  const [url, setUrl] = useState(initial?.url || (/^https?:\/\//u.test(project.title) ? project.title : '')), [resolution, setResolution] = useState<DownloadInput['resolution']>(initial?.resolution || '1080');
-  const [proxyMode, setProxyMode] = useState(initial?.proxy === undefined ? 'system' : initial.proxy ? 'custom' : 'direct');
-  const [proxy, setProxy] = useState(initial?.proxy || ''), [cookies, setCookies] = useState(initial?.cookiesAssetPath || '');
+  const [url, setUrl] = useWorkspaceDraft(`download-url/${project.id}`, () => initial?.url || (/^https?:\/\//u.test(project.title) ? project.title : '')), [resolution, setResolution] = useWorkspaceDraft<DownloadInput['resolution']>(`download-resolution/${project.id}`, () => initial?.resolution || '1080');
+  const [proxyMode, setProxyMode] = useWorkspaceDraft<string>(`download-proxy-mode/${project.id}`, () => initial?.proxy === undefined ? 'system' : initial.proxy ? 'custom' : 'direct');
+  const [proxy, setProxy] = useWorkspaceDraft(`download-proxy/${project.id}`, () => initial?.proxy || ''), [cookies, setCookies] = useWorkspaceDraft(`download-cookies/${project.id}`, () => initial?.cookiesAssetPath || '');
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const working = project.state === 'downloading';
   if (project.source) return null;
@@ -25,8 +26,8 @@ export function DownloadPanel({ project, disabled, locale, uploadCookies, run, s
       <div className="vl-row"><select aria-label="download-proxy-mode" value={proxyMode} disabled={disabled || busy} onChange={event => setProxyMode(event.target.value)}>
         <option value="system">{t('System proxy discovery', '使用系统代理设置')}</option><option value="direct">{t('Direct connection', '直接连接')}</option><option value="custom">{t('Specified proxy', '指定代理')}</option></select>
         {proxyMode === 'custom' && <input aria-label="download-proxy" value={proxy} disabled={disabled || busy} onChange={event => setProxy(event.target.value)} placeholder="http://127.0.0.1:7890" />}</div>
-      <input type="file" accept=".txt" aria-label="download-cookies" disabled={disabled || busy} onChange={event => {
-        const file = event.target.files?.[0]; if (!file) return; setBusy(true); setError('');
+      <WorkspaceFileInput inputKey={`download-cookies/${project.id}`} pickerLabel={t('Choose website cookie file', '选择网站 Cookie 文件')} accept=".txt" aria-label="download-cookies" disabled={disabled || busy} onFiles={files => {
+        const file = files[0]; if (!file) return; setBusy(true); setError('');
         void uploadCookies(file).then(setCookies).catch(error => setError(errorText(error))).finally(() => setBusy(false));
       }} />{cookies && <div className="vl-row"><span>{t('Cookie file selected', '已选择 Cookie 文件')}</span><Button tone="secondary" disabled={disabled || busy} onClick={() => setCookies('')}>{t('Do not use cookies', '不使用 Cookie')}</Button></div>}
     </details>

@@ -1,7 +1,7 @@
-import type { NimiLocalAppClient } from '@nimiplatform/sdk/app';
+import type { VideoLingoPlatform } from './platform.js';
 import { sourceAssetPath, type VideoLingoProject } from '../src-electron/project-types.js';
 
-export async function uploadProjectMedia(projectId: string, file: File, storage: NimiLocalAppClient['storage'],
+export async function uploadProjectMedia(projectId: string, file: File, storage: VideoLingoPlatform['storage'],
   attach: (name: string, uploadId: string) => Promise<VideoLingoProject>, signal: AbortSignal, progress: (bytes: number) => void) {
   if (!file.size || file.size > 4 * 1024 ** 3) throw new Error('Choose a non-empty media file up to 4 GB');
   const uploadId = crypto.randomUUID(), relativePath = sourceAssetPath(projectId, file.name, uploadId);
@@ -16,7 +16,7 @@ export async function uploadProjectMedia(projectId: string, file: File, storage:
     } finally { await reader.cancel(); }
   }
   try {
-    await storage.assets.write({ relativePath, body: body(), mediaType: file.type || 'application/octet-stream' });
+    await storage.assets.write({ relativePath, body: body(), size: file.size, signal, mediaType: file.type || 'application/octet-stream' });
     signal.throwIfAborted(); return await attach(file.name, uploadId);
   } catch (error) {
     // Only this attempt's new UUID path is removed; the previous source stays bound.

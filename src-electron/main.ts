@@ -1,3 +1,5 @@
+import { RemoteVideoLingoWorkspace } from './remote-workspace.js';
+import { randomUUID } from 'node:crypto';
 import { hostReadFailure } from './host-read-error.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +37,7 @@ const appRoot = __NIMI_ELECTRON_PRODUCTION__ ? path.join(process.resourcesPath, 
 let backend: ChildProcess | undefined;
 let projects: Projects | undefined;
 let batches: Batches | undefined;
+let remoteWorkspace: RemoteVideoLingoWorkspace | undefined;
 let resettingRenderer = false;
 let quitting = false;
 app.setName('VideoLingo');
@@ -110,10 +113,14 @@ void app.whenReady().then(async () => {
     onSessionReady: services => {
       projects = new Projects(services, appRoot, __NIMI_ELECTRON_PRODUCTION__);
       batches = new Batches(services.storage, projects);
+      const previous = remoteWorkspace;
+      remoteWorkspace = new RemoteVideoLingoWorkspace(services, projects, batches, path.join(app.getPath('temp'), 'videolingo-web-' + randomUUID()));
+      void previous?.close();
     },
     onSessionInvalidated: () => {
       console.warn('VideoLingo protected session invalidated', new Date().toISOString());
       batches?.invalidate(); projects?.invalidate();
+      const previous = remoteWorkspace; remoteWorkspace = undefined; void previous?.close();
       const windows = BrowserWindow.getAllWindows();
       if (quitting || windows.length === 0) return;
       resettingRenderer = true;
@@ -144,7 +151,7 @@ void app.whenReady().then(async () => {
   app.quit();
 });
 app.on('window-all-closed', () => { if (!resettingRenderer && BrowserWindow.getAllWindows().length === 0) app.quit(); });
-app.on('before-quit', () => { quitting = true; batches?.invalidate(); projects?.invalidate(); backend?.kill(); });
+app.on('before-quit', () => { quitting = true; batches?.invalidate(); projects?.invalidate(); void remoteWorkspace?.close(); backend?.kill(); });
 
 function readDevelopmentRendererUrl(): string {
   const prefix = '--nimi-dev-renderer-url=';

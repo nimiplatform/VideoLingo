@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">VideoLingo</string>
+    <string name="title_activity_main">VideoLingo</string>
+    <string name="package_name">ai.nimi.apps.videolingo.dev</string>
+    <string name="custom_url_scheme">ai.nimi.apps.videolingo.dev</string>
+</resources>

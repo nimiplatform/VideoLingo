@@ -49,6 +49,8 @@ def dub_video(request, workspace):
     if duration <= 0:
         raise ValueError('Dubbing produced no playable mixed audio')
     files = ['output/dub.mp3', 'output/dub.srt', 'output/dub_with_background.wav', 'output/audio/tts_tasks.xlsx']
+    if (workspace / 'output/dub_src.srt').is_file():
+        files.append('output/dub_src.srt')
     video_info = None
     if request['mediaKind'] == 'video':
         video = workspace / 'output/output_dub.mp4'

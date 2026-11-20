@@ -1,3 +1,4 @@
+import { WorkspaceFileInput, useWorkspaceDraft } from './workspace-files.js';
 import { CleanupAction } from './cleanup-action.js';
 import type { CleanupTarget } from './cleanup-confirmation.js';
 import { uploadProjectMedia } from './upload-media.js';
@@ -6,13 +7,11 @@ import { dubbingSettingsFor, validateDubbingInput } from '../src-electron/dubbin
 import { translator } from './localization.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createNimiClient } from '@nimiplatform/sdk';
 import type { NimiAIConfigSnapshot } from '@nimiplatform/sdk/ai';
 import { Button, StatusBadge, NimiThemeProvider, TooltipProvider } from '@nimiplatform/kit/ui';
 import { ModelConfigAIConfigSurface } from '@nimiplatform/kit/features/model-config';
-import { createNimiLocalAppStandardShellSurface, installNimiShellRuntimeBridge, invoke, openNimiLocalAppAssetMediaUrl } from '@nimiplatform/kit/shell/renderer/bridge';
 import { errorText, isWorking, sourceLanguageFor, type DubbingInput, type TaskSheetRow, type PreviewInput, type TranslationInput, type VideoLingoProject } from '../src-electron/project-types.js';
-import { hostReadFailure, readStartupAccess } from './startup-access.js';
+import { hostReadFailure } from './startup-access.js';
 import { BatchPanel } from './batch-panel.js';
 import { SubtitleReviewPanel } from './subtitle-review.js';
 import { DownloadPanel } from './download-panel.js';
@@ -23,30 +22,34 @@ import type { Batch } from '../src-electron/batches.js';
 import { subtitleKey } from '../src-electron/subtitles.js';
 import './styles.css';
 
-installNimiShellRuntimeBridge();
-const client = createNimiClient({ localApp: { standardShell: createNimiLocalAppStandardShellSurface() } });
-const command = <T,>(name: string, payload: Record<string, unknown> = {}) => invoke(`videolingo.${name}`, payload) as Promise<T>;
+import { createNativeVideoLingoPlatform } from './native-platform.js';
+import { useVideoLingoPlatform, VideoLingoPlatformProvider } from './platform.js';
 
 function Config({ locale, capability }: { locale: string; capability: string }) {
+  const platform = useVideoLingoPlatform();
+  const command = platform.command;
   const [snapshot, setSnapshot] = useState<NimiAIConfigSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const refresh = async () => { try { setSnapshot(await client.aiConfig.get()); setError(null); } catch (error) { setError(errorText(error)); } };
+  const refresh = async () => { try { setSnapshot(await platform.aiConfig.get()); setError(null); } catch (error) { setError(errorText(error)); } };
   useEffect(() => { void refresh(); }, []);
+  if (platform.kind !== 'desktop') return <section><p>{locale.startsWith('zh') ? 'AI 使用 PC 上 VideoLingo 的配置。请在 PC App 中修改模型与资源；这里显示实际选择。' : 'AI uses the VideoLingo configuration on your PC. Change models and resources in the PC App; these are its actual selections.'}</p>{error && <p role="alert">{error}</p>}<ul>{snapshot?.effectiveSelections.map(item => <li key={item.capabilityContract}>{item.capabilityContract}: {item.state}</li>)}</ul><Button tone="secondary" onClick={() => void refresh()}>{locale.startsWith('zh') ? '刷新' : 'Refresh'}</Button></section>;
   return <ModelConfigAIConfigSurface context={{ owner: 'app-ai-config', appId: 'ai.nimi.videolingo' }}
     capabilityContracts={['audio.transcribe', 'audio.separate', 'text.annotate', 'text.generate', 'audio.synthesize', 'voice.create']} initialCapabilityContract={capability}
     capabilities={snapshot?.config?.capabilities ?? (snapshot ? null : undefined)} revision={snapshot?.revision}
-    effectiveSelections={snapshot?.effectiveSelections} listOptions={query => client.aiConfig.listOptions(query)}
+    effectiveSelections={snapshot?.effectiveSelections} listOptions={query => platform.aiConfig.listOptions(query)}
     loading={!snapshot && !error} loadError={error} onRetry={() => void refresh()} language={locale}
-    onOverwrite={async input => { const result = await client.aiConfig.overwrite(input); await refresh(); return result; }} />;
+    onOverwrite={async input => { const result = await platform.aiConfig.overwrite(input); await refresh(); return result; }} />;
 }
 
 function SeparationAudio({ assetPath, label }: { assetPath: string; label: string }) {
+  const platform = useVideoLingoPlatform();
+  const command = platform.command;
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   useEffect(() => {
     let active = true;
-    let handle: Awaited<ReturnType<typeof openNimiLocalAppAssetMediaUrl>> | undefined;
-    void openNimiLocalAppAssetMediaUrl(assetPath).then(value => { handle = value; if (active) setUrl(value.url); else void value.revoke(); })
+    let handle: Awaited<ReturnType<typeof platform.openMedia>> | undefined;
+    void platform.openMedia(assetPath).then(value => { handle = value; if (active) setUrl(value.url); else void value.revoke(); })
       .catch(error => { if (active) setError(errorText(error)); });
     return () => { active = false; if (handle) void handle.revoke(); };
   }, [assetPath]);
@@ -58,10 +61,11 @@ function DubbingPanel({ project, locale, disabled, run, configure, cancel, dub, 
   run: (input: PreviewInput) => Promise<void>; configure: (capability: string) => void; cancel: () => Promise<void>;
   onBusy: (busy: boolean) => void; save: (input: DubbingInput) => Promise<void>; dub: (input: DubbingInput) => Promise<void>; download: (assetPath: string) => Promise<void>;
 }) {
+  const platform = useVideoLingoPlatform();
   const t = translator(locale);
-  const [voice, setVoice] = useState<DubbingInput>(() => dubbingSettingsFor(project));
+  const [voice, setVoice] = useWorkspaceDraft<DubbingInput>(`dubbing/${project.id}`, () => dubbingSettingsFor(project));
   const { voiceKind, voiceId = '', referenceMode = 'first', referenceAssetPath: referencePath = '', referenceText = '', burnSubtitles } = voice;
-  const [text, setText] = useState('这是 VideoLingo 的配音预览。');
+  const [text, setText] = useWorkspaceDraft(`preview-text/${project.id}`, () => '这是 VideoLingo 的配音预览。');
   const [error, setError] = useState(''), [uploading, setUploading] = useState(false), [saving, setSaving] = useState(false);
   useEffect(() => { onBusy(uploading || saving); return () => onBusy(false); }, [uploading, saving]);
   const store = () => { setSaving(true); setError(''); void (async () => save(validateDubbingInput(project.id, voice)))().catch(error => setError(errorText(error))).finally(() => setSaving(false)); };
@@ -69,7 +73,7 @@ function DubbingPanel({ project, locale, disabled, run, configure, cancel, dub, 
   const previewWorking = ['translating-preview', 'voice-preview'].includes(project.state);
   return <section className="vl-section"><h3>{t('c. Dubbing', 'c. 配音')}</h3>
     <p>{t('Choose a voice, then generate the full dub. Vocal separation, audio tasks, speech and the final mix run in sequence.', '选择声音后开始整片配音。人声分离、配音任务、语音生成和最终合成依次自动执行。')}</p>
-    <VoiceSettings project={project} value={voice} change={setVoice} client={client} locale={locale} disabled={disabled || saving} configure={configure} onBusy={setUploading} />
+    <VoiceSettings project={project} value={voice} change={setVoice} platform={platform} locale={locale} disabled={disabled || saving} configure={configure} onBusy={setUploading} />
     <Button tone="secondary" disabled={disabled || uploading || saving} onClick={store}>{t('Save voice settings', '保存配音设置')}</Button>
     {error && <p className="vl-error" role="alert">{error}</p>}
     <div className="vl-row"><Button disabled={disabled || uploading || saving || project.translation?.state !== 'completed' || (voiceKind !== 'reference' && !voiceId) || (voiceKind === 'reference' && referenceMode === 'provided' && !referencePath)} onClick={() => {
@@ -100,9 +104,11 @@ function DubbingPanel({ project, locale, disabled, run, configure, cancel, dub, 
 }
 
 function DubbingVideo({ assetPath, label = 'Dubbed video' }: { assetPath: string; label?: string }) {
+  const platform = useVideoLingoPlatform();
+  const command = platform.command;
   const [url, setUrl] = useState(''); const [error, setError] = useState('');
-  useEffect(() => { let active = true; let handle: Awaited<ReturnType<typeof openNimiLocalAppAssetMediaUrl>> | undefined;
-    void openNimiLocalAppAssetMediaUrl(assetPath).then(value => { handle = value; if (active) setUrl(value.url); else void value.revoke(); }).catch(error => setError(errorText(error)));
+  useEffect(() => { let active = true; let handle: Awaited<ReturnType<typeof platform.openMedia>> | undefined;
+    void platform.openMedia(assetPath).then(value => { handle = value; if (active) setUrl(value.url); else void value.revoke(); }).catch(error => setError(errorText(error)));
     return () => { active = false; if (handle) void handle.revoke(); };
   }, [assetPath]);
   return <>{url && <video src={url} controls aria-label={label} />}{error && <p role="alert">{error}</p>}</>;
@@ -112,24 +118,25 @@ function TranslationPanel({ project, locale, disabled, run, cancel, configure, d
   project: VideoLingoProject; locale: string; disabled: boolean; run: (input: TranslationInput) => Promise<void>;
   cancel: () => Promise<void>; configure: () => void; download: (assetPath: string) => Promise<void>;
 }) {
+  const platform = useVideoLingoPlatform();
   const t = translator(locale);
-  const [target, setTarget] = useState(project.translation?.input.targetLanguage || '简体中文');
-  const [reflect, setReflect] = useState(project.translation?.input.reflect ?? true);
-  const [terms, setTerms] = useState(project.translation?.input.customTermsAssetPath || '');
+  const [target, setTarget] = useWorkspaceDraft(`translation-target/${project.id}`, () => project.translation?.input.targetLanguage || '简体中文');
+  const [reflect, setReflect] = useWorkspaceDraft(`translation-reflect/${project.id}`, () => project.translation?.input.reflect ?? true);
+  const [terms, setTerms] = useWorkspaceDraft(`translation-terms/${project.id}`, () => project.translation?.input.customTermsAssetPath || '');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const stage = project.translation;
   return <section className="vl-section"><h3>{t('Translate and make subtitles', '翻译与制作字幕')}</h3>
-    <label>{t('Translation target', '翻译目标语言')} <input aria-label="translation-target" value={target} disabled={disabled} onChange={event => setTarget(event.target.value)} /></label>
-    <label><input type="checkbox" checked={reflect} disabled={disabled} onChange={event => setReflect(event.target.checked)} />{t('Reflect and polish the faithful translation', '在忠实翻译后反思润色')}</label>
+    <div className="vl-row"><label>{t('Translation target', '翻译目标语言')} <input aria-label="translation-target" value={target} disabled={disabled} onChange={event => setTarget(event.target.value)} /></label>
+    <label><input type="checkbox" checked={reflect} disabled={disabled} onChange={event => setReflect(event.target.checked)} />{t('Reflect and polish the faithful translation', '在忠实翻译后反思润色')}</label></div>
     <p>{t('Optional terminology workbook: source, target and note columns. Otherwise the original bundled glossary is used.', '可选术语表：源文、译文、备注三列。未上传时使用原项目附带的术语表。')}</p>
-    <input type="file" aria-label={t('Terminology workbook', '术语表')} accept=".xlsx" disabled={disabled || uploading} onChange={event => {
-      const file = event.target.files?.[0]; if (!file) return;
+    <WorkspaceFileInput inputKey={`translation-terms/${project.id}`} pickerLabel={t('Choose terminology workbook', '选择术语表')} aria-label={t('Terminology workbook', '术语表')} accept=".xlsx" disabled={disabled || uploading} onFiles={files => {
+      const file = files[0]; if (!file) return;
       setUploading(true); setError('');
       void (async () => {
         if (!file.size || file.size > 5 * 1024 ** 2 || !file.name.toLowerCase().endsWith('.xlsx')) throw new Error('Choose an XLSX terminology workbook up to 5 MiB');
         const assetPath = `projects/${project.id}/terms/${crypto.randomUUID()}.xlsx`;
-        await client.storage.assets.write({ relativePath: assetPath, body: file, mediaType: file.type }); setTerms(assetPath);
+        await platform.storage.assets.write({ relativePath: assetPath, body: file, size: file.size, mediaType: file.type }); setTerms(assetPath);
       })().catch(error => setError(errorText(error))).finally(() => setUploading(false));
     }} />
     <div className="vl-row"><Button disabled={disabled || uploading || project.nlp?.state !== 'completed'} onClick={() => void run({ targetLanguage: target, reflect, ...(terms ? { customTermsAssetPath: terms } : {}) })}>{t('Run or resume translation', '运行或恢复翻译')}</Button>
@@ -145,6 +152,7 @@ function TranslationPanel({ project, locale, disabled, run, cancel, configure, d
 }
 
 function MediaPreview({ project, prepare, disabled }: { project: VideoLingoProject; prepare: () => Promise<void>; disabled: boolean }) {
+  const platform = useVideoLingoPlatform();
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const videoInput = !!project.source && ['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'webm'].includes(project.source.name.split('.').pop()!.toLowerCase());
@@ -153,9 +161,9 @@ function MediaPreview({ project, prepare, disabled }: { project: VideoLingoProje
   const assetPath = converted ? project.mediaPreview?.assetPath : needsConversion ? undefined : project.source?.assetPath;
   useEffect(() => {
     let active = true;
-    let handle: Awaited<ReturnType<typeof openNimiLocalAppAssetMediaUrl>> | undefined;
+    let handle: Awaited<ReturnType<typeof platform.openMedia>> | undefined;
     setUrl(''); setError('');
-    if (assetPath) void openNimiLocalAppAssetMediaUrl(assetPath).then(value => {
+    if (assetPath) void platform.openMedia(assetPath).then(value => {
       handle = value;
       if (active) setUrl(value.url); else void value.revoke();
     }).catch(error => { if (active) setError(errorText(error)); });
@@ -173,7 +181,9 @@ function MediaPreview({ project, prepare, disabled }: { project: VideoLingoProje
   </>;
 }
 
-function Workspace({ locale }: { locale: string }) {
+export function Workspace({ locale }: { locale: string }) {
+  const platform = useVideoLingoPlatform();
+  const command = platform.command;
   const zh = locale.startsWith('zh');
   const t = translator(locale);
   const [projects, setProjects] = useState<VideoLingoProject[]>([]);
@@ -182,7 +192,7 @@ function Workspace({ locale }: { locale: string }) {
   const [workflowRunning, setWorkflowRunning] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ name: string; bytes: number; total: number } | null>(null);
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useWorkspaceDraft('workspace-title', () => '');
   const [busy, setBusy] = useState(false);
   const [opening, setOpening] = useState(false);
   const [bound, setBound] = useState(false);
@@ -191,16 +201,18 @@ function Workspace({ locale }: { locale: string }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [configOpen, setConfigOpen] = useState(false);
-  const [page, setPage] = useState<'project' | 'batch'>('project');
+  const [page, setPage] = useWorkspaceDraft<'project' | 'batch'>('workspace-page', () => 'project');
   const [referenceBusy, setReferenceBusy] = useState(false);
   const [configCapability, setConfigCapability] = useState('audio.transcribe');
   const [languageHint, setLanguageHint] = useState('');
-  const selectedId = useRef('');
+  const [rememberedProject,setRememberedProject] = useWorkspaceDraft('workspace-project', () => '');
+  const selectedId = useRef(rememberedProject);
+  const restoringSelection = useRef(platform.drafts?.read('workspace-project') !== undefined);
   const uploadAbort = useRef<AbortController | null>(null);
   const accessRead = useRef<AbortController | null>(null);
 
   const choose = (value: VideoLingoProject | null) => {
-    selectedId.current = value?.id || '';
+    selectedId.current = value?.id || ''; setRememberedProject(selectedId.current);
     setProject(value); setSettingsDraft(value ? businessSettings(value) : null); setWorkflowRunning(false); setLanguageHint(value?.languageHint || ''); setError(''); setNotice('');
   };
   const load = async () => {
@@ -209,15 +221,14 @@ function Workspace({ locale }: { locale: string }) {
     setCheckingAccess(true); setError('');
     let authenticated = false;
     try {
-      const status = await readStartupAccess(() => client.auth.status(), read.signal);
+      await platform.checkAccess(read.signal);
       read.signal.throwIfAborted();
-      authenticated = status.sessionBound;
-      setBound(status.sessionBound);
-      if (!status.sessionBound) throw new Error(`${status.reasonCode}: ${status.actionHint}`);
+      authenticated = true;
+      setBound(true);
       const values = await command<VideoLingoProject[]>('projects.list');
       read.signal.throwIfAborted();
       setProjects(values);
-      choose(values.find(value => value.id === selectedId.current) || values.find(value => !value.archivedAt) || null);
+      choose(values.find(value => value.id === selectedId.current) || (restoringSelection.current ? null : values.find(value => !value.archivedAt)) || null);
       setReadInterrupted(false);
     } catch (error) {
       if (read.signal.aborted) return;
@@ -259,7 +270,7 @@ function Workspace({ locale }: { locale: string }) {
     const controller = new AbortController(); uploadAbort.current = controller;
     setUploadProgress({ name: file.name, bytes: 0, total: file.size });
     try {
-      const value = await uploadProjectMedia(target.id, file, client.storage,
+      const value = await uploadProjectMedia(target.id, file, platform.storage,
         (name, uploadId) => command<VideoLingoProject>('project.attach-media', { projectId: target.id, name, uploadId }),
         controller.signal, bytes => setUploadProgress({ name: file.name, bytes, total: file.size }));
       setProjects(previous => previous.map(item => item.id === value.id ? value : item)); return value;
@@ -315,12 +326,12 @@ function Workspace({ locale }: { locale: string }) {
     <nav className="vl-navigation" aria-label={t('Workspace', '工作区')}><Button tone={page === 'project' ? undefined : 'secondary'} onClick={() => setPage('project')}>{t('Video translation', '视频翻译')}</Button>
       <Button tone={page === 'batch' ? undefined : 'secondary'} onClick={() => setPage('batch')}>{t('Batch processing', '批量处理')}</Button></nav>
     {configOpen && <div className="vl-config"><Config key={configCapability} locale={locale} capability={configCapability} /></div>}
-    <section hidden={page !== 'batch'}><BatchPanel locale={locale} bound={bound} client={client} configure={capability => { setConfigCapability(capability); setConfigOpen(true); }} command={command} projects={projects}
+    <section hidden={page !== 'batch'}><BatchPanel locale={locale} bound={bound} platform={platform} configure={capability => { setConfigCapability(capability); setConfigOpen(true); }} command={command} projects={projects}
       selectProject={async id => { choose(await command<VideoLingoProject>('project.get', { projectId: id })); setPage('project'); }}
       readSheet={async file => {
         if (!file.name.toLowerCase().endsWith('.xlsx') || !file.size || file.size > 5 * 1024 ** 2) throw new Error('Choose an XLSX task sheet up to 5 MiB');
         const assetPath = `batch-imports/${crypto.randomUUID()}.xlsx`;
-        await client.storage.assets.write({ relativePath: assetPath, body: file, mediaType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        await platform.storage.assets.write({ relativePath: assetPath, body: file, size: file.size, mediaType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         return command<{ rows: TaskSheetRow[] }>('batch.read-task-sheet', { assetPath });
       }}
       beginUrl={async url => {
@@ -354,14 +365,14 @@ function Workspace({ locale }: { locale: string }) {
         uploadTerms={async file => {
           if (!file.size || file.size > 5 * 1024 ** 2 || !file.name.toLowerCase().endsWith('.xlsx')) throw new Error('Choose an XLSX terminology file up to 5 MiB');
           const assetPath = `projects/${project.id}/terms/${crypto.randomUUID()}.xlsx`;
-          await client.storage.assets.write({ relativePath: assetPath, body: file, mediaType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }); return assetPath;
+          await platform.storage.assets.write({ relativePath: assetPath, body: file, size: file.size, mediaType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }); return assetPath;
         }} />}
     </aside>
     <main className="vl-main">
 
     {!project && !opening && !showArchived && <section className="vl-section"><h3>{t('a. Download or upload media', 'a. 下载或上传媒体')}</h3>
-      <input type="file" aria-label="new-media-file" accept=".mp4,.mov,.avi,.mkv,.flv,.wmv,.webm,.wav,.mp3,.flac,.m4a" disabled={busy || !bound} onChange={event => {
-        const file = event.target.files?.[0]; if (file) void perform(async () => choose(await importMediaFile(file)));
+      <WorkspaceFileInput inputKey="new-media" pickerLabel={t('Choose media', '选择媒体')} aria-label="new-media-file" accept=".mp4,.mov,.avi,.mkv,.flv,.wmv,.webm,.wav,.mp3,.flac,.m4a" disabled={busy || !bound} onFiles={files => {
+        const file = files[0]; if (file) void perform(async () => choose(await importMediaFile(file)));
       }} />
       <Button tone="secondary" disabled={busy || !bound} onClick={() => void perform(async () => {
         const created = await command<VideoLingoProject>('project.create', { title: t('Link import', '链接导入') });
@@ -379,8 +390,8 @@ function Workspace({ locale }: { locale: string }) {
       })}>{project.archivedAt ? t('Restore from history', '从历史恢复') : t('Archive to history', '归档到历史')}</Button></div>
       <section className="vl-section"><h3>{t('a. Import media', 'a. 导入媒体')}</h3>
         <p>{project.source?.name || t('Import a video or audio file to start.', '导入视频或音频文件开始处理。')}</p>
-        <input aria-label={t('Upload local media file', '上传本地媒体文件')} type="file" accept=".mp4,.mov,.avi,.mkv,.flv,.wmv,.webm,.wav,.mp3,.flac,.m4a" disabled={!bound || busy || working || !editable || !!project.source}
-          onChange={event => { const file = event.target.files?.[0]; if (file) void perform(() => upload(file)); event.target.value = ''; }} />
+        <WorkspaceFileInput inputKey={`project-media/${project.id}`} pickerLabel={t('Choose media', '选择媒体')} aria-label={t('Upload local media file', '上传本地媒体文件')} accept=".mp4,.mov,.avi,.mkv,.flv,.wmv,.webm,.wav,.mp3,.flac,.m4a" disabled={!bound || busy || working || !editable || !!project.source}
+          onFiles={files => { const file = files[0]; if (file) void perform(() => upload(file)); }} />
         {busy && <p role="status">{t('Working…', '正在处理…')}</p>}
         <MediaPreview project={project} disabled={busy || working || !bound || !editable} prepare={() => perform(async () => {
           const id = project.id; const value = await command<VideoLingoProject>('project.prepare-preview', { projectId: id }); if (selectedId.current === id) setProject(value);
@@ -394,7 +405,7 @@ function Workspace({ locale }: { locale: string }) {
         uploadCookies={async file => {
           if (!file.name.toLowerCase().endsWith('.txt') || !file.size || file.size > 1024 ** 2) throw new Error('Choose a cookies.txt file up to 1 MiB');
           const assetPath = `projects/${project.id}/download-cookies/${crypto.randomUUID()}.txt`;
-          await client.storage.assets.write({ relativePath: assetPath, body: file, mediaType: 'text/plain' }); return assetPath;
+          await platform.storage.assets.write({ relativePath: assetPath, body: file, size: file.size, mediaType: 'text/plain' }); return assetPath;
         }}
         run={async input => { setNotice(''); const id = project.id; const value = await command<VideoLingoProject>('project.download-url', { projectId: id, input }); if (selectedId.current === id) setProject(value); }}
         stop={() => perform(() => task('cancel'))} />
@@ -446,8 +457,8 @@ function Workspace({ locale }: { locale: string }) {
           <p>{project.separation.sampleRateHz} Hz · {project.separation.channels} {t('channels', '声道')} · {project.separation.durationSeconds?.toFixed(3)} s</p>
           <SeparationAudio assetPath={project.separation.vocalsPath} label={t('Vocals', '人声')} />
           <SeparationAudio assetPath={project.separation.backgroundPath} label={t('Background', '背景音')} />
-          <div className="vl-row"><Button tone="secondary" onClick={() => void perform(async () => { await client.storage.assets.reveal(project.separation!.vocalsPath!); })}>{t('Show vocals file', '显示人声文件')}</Button>
-            <Button tone="secondary" onClick={() => void perform(async () => { await client.storage.assets.reveal(project.separation!.backgroundPath!); })}>{t('Show background file', '显示背景音文件')}</Button></div>
+          <div className="vl-row"><Button tone="secondary" onClick={() => void perform(async () => { await platform.storage.assets.reveal(project.separation!.vocalsPath!); })}>{t('Show vocals file', '显示人声文件')}</Button>
+            <Button tone="secondary" onClick={() => void perform(async () => { await platform.storage.assets.reveal(project.separation!.backgroundPath!); })}>{t('Show background file', '显示背景音文件')}</Button></div>
         </>}
       </section>
       <section className="vl-section"><h3>{t('d. Translate subtitles and dub video', 'd. 翻译字幕与视频配音')}</h3>
@@ -497,6 +508,6 @@ function Workspace({ locale }: { locale: string }) {
 
 export default function component({ parentElement, data }: { parentElement: HTMLElement | ShadowRoot; data: { locale?: string } }) {
   const container = document.createElement('div'); parentElement.appendChild(container);
-  const root = createRoot(container); root.render(<NimiThemeProvider accentPack="nimi-accent"><TooltipProvider><Workspace locale={data?.locale || 'en'} /></TooltipProvider></NimiThemeProvider>);
+  const root = createRoot(container); root.render(<NimiThemeProvider accentPack="nimi-accent"><TooltipProvider><VideoLingoPlatformProvider platform={createNativeVideoLingoPlatform()}><Workspace locale={data?.locale || 'en'} /></VideoLingoPlatformProvider></TooltipProvider></NimiThemeProvider>);
   return () => { root.unmount(); container.remove(); };
 }

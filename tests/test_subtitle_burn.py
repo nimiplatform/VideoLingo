@@ -44,8 +44,6 @@ def _typesetter():
     pytest.importorskip("uharfbuzz", reason="the subtitle typesetter needs uharfbuzz (requirements.txt)")
     from core.utils import typeset
 
-    if os.path.splitdrive(os.getcwd())[0].lower() != os.path.splitdrive(typeset.FONTS_DIR)[0].lower():
-        pytest.skip("fonts/ is on another drive than the temporary folder")
     return typeset
 
 
@@ -69,7 +67,11 @@ def test_without_a_font_name_the_typesetter_burns_them_first(workspace, monkeypa
         match = re.fullmatch(r"ass=(output/ass/subtitle/[\w.-]+\.ass):fontsdir=([\w./+-]+):shaping=\w+", part)
         assert match, part
         assert Path(match[1]).is_file()
-        assert Path(match[2]).resolve() == Path(typeset.FONTS_DIR).resolve()
+        if os.path.splitdrive(os.getcwd())[0].lower() == os.path.splitdrive(typeset.FONTS_DIR)[0].lower():
+            assert Path(match[2]).resolve() == Path(typeset.FONTS_DIR).resolve()
+        else:
+            assert Path(match[2]).resolve() == Path("output/ass/subtitle/fonts").resolve()
+            assert (Path(match[2]) / "VLNotoSansXCondMain.ttf").is_file()
 
 
 def test_a_font_of_the_users_choice_is_burnt_with_the_subtitles_filter(workspace, monkeypatch):
@@ -187,7 +189,8 @@ def _burn(monkeypatch, candidates=None):
 
     def recording_popen(command, *args, **kwargs):
         if "-vf" in command:  # subprocess.run starts its processes through Popen too
-            filters.append(command[command.index("-vf") + 1].decode("utf-8"))
+            raw = command[command.index("-vf") + 1]
+            filters.append(raw.decode("utf-8") if isinstance(raw, bytes) else raw)
         return popen(command, *args, **kwargs)
 
     monkeypatch.setattr(merge.subprocess, "Popen", recording_popen)

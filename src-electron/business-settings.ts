@@ -8,9 +8,14 @@ export type BusinessSettings = {
 
 export const DEFAULT_BUSINESS_SETTINGS: BusinessSettings = {
   sourceLanguage: '', targetLanguage: '简体中文', burnSubtitles: true, vocalEnhancement: false, reflect: true,
-  maxSplitLength: 20, subtitleMaxLength: 75, subtitleTargetMultiplier: 1.2, maxWorkers: 4, summaryLength: 8000,
+  maxSplitLength: 20, subtitleMaxLength: 80, subtitleTargetMultiplier: 1.0, maxWorkers: 4, summaryLength: 8000,
   speedMin: 1, speedAccept: 1.2, speedMax: 1.4, minSubtitleDuration: 2.5, minTrimDuration: 3.5, tolerance: 1.5,
   ffmpegGpu: false, rawSampleRate: 32000, rawBitrate: '128k',
+};
+
+/** Pre-v3.2.0 counted-character defaults preserved for legacy project records without explicit settings. */
+export const LEGACY_DEFAULT_BUSINESS_SETTINGS: BusinessSettings = {
+  ...DEFAULT_BUSINESS_SETTINGS, subtitleMaxLength: 75, subtitleTargetMultiplier: 1.2,
 };
 
 export function validateBusinessSettings(value: BusinessSettings): BusinessSettings {
@@ -36,8 +41,9 @@ export function validateBusinessSettings(value: BusinessSettings): BusinessSetti
   return result;
 }
 
-export function businessSettings(project: { settings?: BusinessSettings; languageHint?: string; translation?: { input: { targetLanguage: string; reflect: boolean; customTermsAssetPath?: string } } }): BusinessSettings {
-  return project.settings || { ...DEFAULT_BUSINESS_SETTINGS, sourceLanguage: project.languageHint || '',
+export function businessSettings(project: { settings?: BusinessSettings; languageHint?: string; translation?: { input: { targetLanguage: string; reflect: boolean; customTermsAssetPath?: string }; settings?: BusinessSettings } }): BusinessSettings {
+  const base = project.translation ? (project.translation.settings || LEGACY_DEFAULT_BUSINESS_SETTINGS) : DEFAULT_BUSINESS_SETTINGS;
+  return project.settings || { ...base, sourceLanguage: project.languageHint || '',
     ...(project.translation ? { targetLanguage: project.translation.input.targetLanguage, reflect: project.translation.input.reflect,
       ...(project.translation.input.customTermsAssetPath ? { customTermsAssetPath: project.translation.input.customTermsAssetPath } : {}) } : {}) };
 }

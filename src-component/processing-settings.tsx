@@ -1,3 +1,4 @@
+import { WorkspaceFileInput, useWorkspaceDraft } from './workspace-files.js';
 import { translator } from './localization.js';
 import React, { useEffect, useState } from 'react';
 import { Button } from '@nimiplatform/kit/ui';
@@ -9,8 +10,8 @@ export function ProcessingSettings({ project, locale, disabled, save, uploadTerm
   onDraft: (settings: BusinessSettings) => void;
 }) {
   const t = translator(locale);
-  const [value, setValue] = useState(() => businessSettings(project));
-  const [dirty, setDirty] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const [value, setValue] = useWorkspaceDraft(`processing/${project.id}`, () => businessSettings(project));
+  const [dirty, setDirty] = useWorkspaceDraft(`processing-dirty/${project.id}`, () => false), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const patch = (values: Partial<BusinessSettings>) => { setValue(previous => ({ ...previous, ...values })); setDirty(true); };
   useEffect(() => { onDraft(value); }, [value]);
   useEffect(() => {
@@ -28,12 +29,12 @@ export function ProcessingSettings({ project, locale, disabled, save, uploadTerm
       <label><input type="checkbox" checked={value.reflect} disabled={disabled || busy} onChange={event => patch({ reflect: event.target.checked })} />{t('Reflect and polish translations', '反思润色译文')}</label></div>
     <details><summary>{t('Subtitle length tuning', '字幕长度调节')}</summary><div className="vl-row">
       {number('maxSplitLength', 'Rough cut (words/tokens)', '粗分长度（词/单位）', 8, 60)}
-      {number('subtitleMaxLength', 'Subtitle line length', '字幕行长度', 20, 200)}
-      <Button tone="secondary" disabled={disabled || busy} onClick={() => patch({ maxSplitLength: 20, subtitleMaxLength: 75 })}>{t('Restore 20 / 75', '恢复 20 / 75')}</Button></div></details>
+      {number('subtitleMaxLength', 'Subtitle line width (80 = 1 row)', '字幕行宽（80 为一行）', 20, 200)}
+      <Button tone="secondary" disabled={disabled || busy} onClick={() => patch({ maxSplitLength: 20, subtitleMaxLength: 80, subtitleTargetMultiplier: 1.0 })}>{t('Restore 20 / 80', '恢复 20 / 80')}</Button></div></details>
     <details><summary>{t('Terminology and advanced processing', '术语与高级处理设置')}</summary>
       <p>{t('Optional terminology workbook: source, translation and note columns. Processing settings apply when starting the next task; existing outputs remain available.', '可选术语表依次为原文、译文、备注三列。处理设置在下次开始任务时应用，现有结果仍可查看。')}</p>
-      <input type="file" accept=".xlsx" aria-label="setting-customTerms" disabled={disabled || busy} onChange={event => {
-        const file = event.target.files?.[0]; if (!file) return; setBusy(true); setError('');
+      <WorkspaceFileInput inputKey={`processing-terms/${project.id}`} pickerLabel={t('Choose terminology workbook', '选择术语表')} accept=".xlsx" aria-label="setting-customTerms" disabled={disabled || busy} onFiles={files => {
+        const file = files[0]; if (!file) return; setBusy(true); setError('');
         void uploadTerms(file).then(path => patch({ customTermsAssetPath: path })).catch(error => setError(errorText(error))).finally(() => setBusy(false));
       }} />{value.customTermsAssetPath && <Button tone="secondary" disabled={disabled || busy} onClick={() => patch({ customTermsAssetPath: undefined })}>{t('Use the bundled terminology', '使用附带术语表')}</Button>}
       <div className="vl-settings-grid">

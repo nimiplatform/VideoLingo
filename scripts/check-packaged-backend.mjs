@@ -45,7 +45,8 @@ try {
 const workspace = await mkdtemp(path.join(tmpdir(), 'videolingo-packaged-boundary-'));
 try {
   const sheet = path.join(workspace, 'tasks.xlsx');
-  await copyFile(path.resolve('batch/tasks_setting.xlsx'), sheet);
+  const python = path.resolve('.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+  execFileSync(python, ['-c', 'import sys; from openpyxl import Workbook; wb=Workbook(); ws=wb.active; ws.append(["Video File","Source Language","Target Language","Dubbing","Status"]); ws.append(["https://www.youtube.com/watch?v=U4aFbyzrTdc","","French",1,""]); wb.save(sys.argv[1])', sheet], { windowsHide: true });
   const parsed = await runMediaWorker(root, { operation: 'read-task-sheet', workspace, file: sheet }, AbortSignal.timeout(30000), true);
   assert.equal(parsed.rows[0].videoFile, 'https://www.youtube.com/watch?v=U4aFbyzrTdc');
   assert.equal(parsed.rows[0].targetLanguage, 'French');
@@ -56,13 +57,26 @@ try {
     response.end(request.method === 'HEAD' ? undefined : media);
   });
   await new Promise(resolve => sourceServer.listen(0, '127.0.0.1', resolve));
+  let importedFile = '';
   try {
     const imported = await runMediaWorker(root, { operation: 'download-url', workspace,
       url: `http://127.0.0.1:${sourceServer.address().port}/demo.mp4`, resolution: 'best', proxy: '' }, AbortSignal.timeout(60000), true);
+    importedFile = imported.file;
     assert.deepEqual(await readFile(imported.file), media);
     assert.equal(imported.mediaType, 'video/mp4');
     console.log('Packaged task sheet parser and real loopback media download passed; no AI or external website was used.');
   } finally { await new Promise(resolve => sourceServer.close(resolve)); }
+  const subClip = path.join(workspace, 'short-clip.mp4');
+  execFileSync(path.join(root, 'media-bin', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'),
+    ['-nostdin', '-v', 'error', '-y', '-i', importedFile, '-t', '2', '-c:v', 'libx264', '-an', subClip], { windowsHide: true, env: environment });
+  await mkdir(path.join(workspace, 'output'), { recursive: true });
+  await writeFile(path.join(workspace, 'output/src.srt'), '1\n00:00:00,000 --> 00:00:01,800\nHello from packaged VideoLingo.\n', 'utf8');
+  await writeFile(path.join(workspace, 'output/trans.srt'), '1\n00:00:00,000 --> 00:00:01,800\nHola desde VideoLingo.\n', 'utf8');
+  const rendered = await runMediaWorker(root, { operation: 'render-subtitles', workspace, source: subClip,
+    businessSettings: { ffmpeg_gpu: false, subtitle: { max_length: 80, target_multiplier: 1.0 } } }, AbortSignal.timeout(60000), true);
+  assert.ok((await readFile(rendered.file)).length > 0);
+  assert.match(await readFile(path.join(workspace, 'output/ass/subtitle/main.ass'), 'utf8'), /VL Noto Sans XCond Main/u);
+  console.log('Packaged v3.2.0 HarfBuzz + ASS bilingual subtitle typesetting and burn-in passed.');
   await mkdir(path.join(workspace, 'output/log'), { recursive: true });
   await writeFile(path.join(workspace, 'output/log/split_by_nlp.txt'), 'A source line.');
   for (const operation of ['translate-preview', 'translate-subtitles']) {

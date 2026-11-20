@@ -1,7 +1,8 @@
+import { useWorkspaceDraft } from './workspace-files.js';
 import { translator } from './localization.js';
 import React, { useEffect, useState } from 'react';
 import { Button } from '@nimiplatform/kit/ui';
-import { invoke } from '@nimiplatform/kit/shell/renderer/bridge';
+import { useVideoLingoPlatform } from './platform.js';
 import { errorText, type VideoLingoProject } from '../src-electron/project-types.js';
 import { subtitleIssues, SUBTITLE_LIMIT, type SubtitleReview } from '../src-electron/subtitles.js';
 
@@ -9,16 +10,17 @@ export function SubtitleReviewPanel({ project, locale, disabled, saved, download
   project: VideoLingoProject; locale: string; disabled: boolean;
   saved: (project: VideoLingoProject) => void; download: (path: string) => Promise<void>;
 }) {
+  const { command } = useVideoLingoPlatform();
   const zh = locale.startsWith('zh'), t = translator(locale);
-  const [review, setReview] = useState<SubtitleReview>();
-  const [kind, setKind] = useState<'display' | 'dubbing'>('display');
-  const [dirty, setDirty] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const [review, setReview] = useWorkspaceDraft<SubtitleReview|undefined>(`subtitle-review/${project.id}/${project.translation?.key}`,()=>undefined);
+  const [kind, setKind] = useWorkspaceDraft<'display' | 'dubbing'>(`subtitle-kind/${project.id}`,()=>'display');
+  const [dirty, setDirty] = useWorkspaceDraft(`subtitle-dirty/${project.id}/${project.translation?.key}`,()=>false), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const readOnly = !!project.archivedAt || !!project.cleanupPending;
-  const read = () => invoke('videolingo.project.subtitles', { projectId: project.id }) as Promise<SubtitleReview>;
+  const read = () => command('project.subtitles', { projectId: project.id }) as Promise<SubtitleReview>;
   useEffect(() => {
     let active = true;
-    void read().then(value => { if (active) setReview(value); }).catch(error => { if (active) setError(errorText(error)); });
+    void read().then(value => { if (active) { if (!dirty) setReview(value); else if (review?.revision !== value.revision) setError(t('The saved subtitle revision changed; reload or review your retained draft before saving.', '已保存的字幕修订已变化；保存前请重新载入或检查保留的草稿。')); } }).catch(error => { if (active) setError(errorText(error)); });
     return () => { active = false; };
   }, [project.id, project.translation?.key]);
   let issues: string[] = [], syntaxError = '';
@@ -35,7 +37,7 @@ export function SubtitleReviewPanel({ project, locale, disabled, saved, download
     : `output/audio/${side === 'source' ? 'src' : 'trans'}_subs_for_audio.srt`;
   const exportDraft = (assetPath: string) => {
     setBusy(true); setError('');
-    void invoke('videolingo.project.export', { projectId: project.id, assetPath, subtitleDraft: true })
+    void command('project.export', { projectId: project.id, assetPath, subtitleDraft: true })
       .catch(error => setError(errorText(error))).finally(() => setBusy(false));
   };
   const exportBlocked = (name: string) => {
@@ -80,7 +82,7 @@ export function SubtitleReviewPanel({ project, locale, disabled, saved, download
       <div className="vl-row"><Button disabled={disabled || busy || !dirty || !!syntaxError || readOnly} onClick={() => {
         setBusy(true); setError('');
         void (async () => {
-          const updated = await invoke('videolingo.project.save-subtitles', { projectId: project.id,
+          const updated = await command('project.save-subtitles', { projectId: project.id,
             input: { translationKey: review.translationKey, revision: review.revision, display: review.display, dubbing: review.dubbing } }) as VideoLingoProject;
           const latest = await read(); setReview(latest); setDirty(false); saved(updated);
           setNotice(latest.issues.length ? t('Draft saved. Timing issues still block final exports and dubbing.', '草稿已保存，时间问题仍会拦截成品导出与配音。')
@@ -91,7 +93,7 @@ export function SubtitleReviewPanel({ project, locale, disabled, saved, download
           .catch(error => setError(errorText(error))).finally(() => setBusy(false)); }}>{t('Reload saved subtitles', '重新载入已保存字幕')}</Button></div>
       {notice && <p role="status" className="vl-notice">{notice}</p>}
       <div className="vl-row">{[false, true].map(draft => <Button key={String(draft)} tone="secondary" disabled={disabled || busy || dirty || (!draft && (!!syntaxError || !!issues.length))} onClick={() => {
-        setBusy(true); setError(''); void invoke('videolingo.project.export-subtitles', { projectId: project.id, draft })
+        setBusy(true); setError(''); void command('project.export-subtitles', { projectId: project.id, draft })
           .catch(error => setError(errorText(error))).finally(() => setBusy(false));
       }}>{draft ? t('Download all subtitle drafts (ZIP)', '下载全部字幕草稿（ZIP）') : t('Download all subtitles (ZIP)', '下载全部字幕（ZIP）')}</Button>)}</div>
       <div className="vl-row">{Object.entries(review.files).map(([name, file]) => <Button key={name} tone="secondary" disabled={disabled || busy || dirty || exportBlocked(name)}

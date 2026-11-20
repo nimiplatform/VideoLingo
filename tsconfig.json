@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "jsx": "react-jsx",
@@ -10,7 +14,19 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
-    "types": ["node", "react", "react-dom"]
+    "types": [
+      "node",
+      "react",
+      "react-dom",
+      "vite/client"
+    ]
   },
-  "include": ["src-electron/**/*.ts", "src-component/**/*.ts", "src-component/**/*.tsx", "tests/nimi-*.test.ts"]
+  "include": [
+    "src-electron/**/*.ts",
+    "src-component/**/*.ts",
+    "src-component/**/*.tsx",
+    "tests/nimi-*.test.ts",
+    "src-web/**/*.ts",
+    "src-web/**/*.tsx"
+  ]
 }

@@ -166,9 +166,9 @@ AllinOne.ipynb
 config.backup.yaml
 
 # runtime
-runtime/
-dev/
-installer_files/
+/runtime/
+/dev/
+/installer_files/
 
 # Streamlit runtime logs from OneKeyStart.bat
 logs/
@@ -188,3 +188,12 @@ node_modules/
 /dist-electron/
 /dist-electron-package/
 /dist-python/
+
+/dist-web/
+/dist-mobile/
+/android/.gradle/
+/android/app/build/
+/android/build/
+/android/local.properties
+/android/capacitor-cordova-android-plugins/
+/android/app/src/main/assets/

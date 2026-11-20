@@ -10,7 +10,7 @@ export type WorkerModelHandlers = {
   checkpoint?: (input: Record<string, unknown>) => Promise<unknown>;
 };
 
-export function workerEnvironment(appRoot: string): NodeJS.ProcessEnv {
+export function workerEnvironment(appRoot: string, packaged = false): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   for (const key of ['SystemRoot', 'WINDIR', 'SystemDrive', 'TEMP', 'TMP', 'USERPROFILE', 'LOCALAPPDATA', 'APPDATA']) {
     if (process.env[key]) env[key] = process.env[key];
@@ -18,6 +18,9 @@ export function workerEnvironment(appRoot: string): NodeJS.ProcessEnv {
   env.PYTHONUTF8 = '1';
   env.PYTHONNOUSERSITE = '1';
   env.PYTHONPATH = appRoot;
+  if (packaged && (process.env.LOCALAPPDATA || process.env.TEMP || process.env.TMP)) {
+    env.VIDEOLINGO_FONTS_DIR = path.join(process.env.LOCALAPPDATA || process.env.TEMP || process.env.TMP!, 'VideoLingo-Nimi', 'fonts');
+  }
   env.PATH = [path.join(appRoot, 'media-bin'), path.join(appRoot, '.nimi/local/media-bin'),
     path.join(appRoot, '.venv', process.platform === 'win32' ? 'Scripts' : 'bin'),
     ...(process.platform === 'win32' ? [path.join(process.env.SystemRoot || 'C:\\Windows', 'System32')] : ['/usr/bin', '/bin'])].join(path.delimiter);
@@ -31,7 +34,7 @@ export async function runMediaWorker<T>(appRoot: string, input: Record<string, u
     : path.join(appRoot, '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
   const args = packaged ? ['worker'] : ['-X', 'utf8', '-m', 'core.nimi_worker'];
   return new Promise<T>((resolve, reject) => {
-    const child = spawn(executable, args, { cwd: appRoot, env: workerEnvironment(appRoot), windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn(executable, args, { cwd: appRoot, env: workerEnvironment(appRoot, packaged), windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
     const decoder = new StringDecoder('utf8');

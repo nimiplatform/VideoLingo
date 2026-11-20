@@ -1,4 +1,5 @@
-import type { NimiLocalAppClient } from '@nimiplatform/sdk/app';
+import { WorkspaceFileInput, useWorkspaceDraft } from './workspace-files.js';
+import type { VideoLingoPlatform } from './platform.js';
 import { businessSettings } from '../src-electron/business-settings.js';
 import { dubbingSettingsFor } from '../src-electron/dubbing-settings.js';
 import { VoiceSettings } from './voice-settings.js';
@@ -10,8 +11,8 @@ import { errorText, type TaskSheetRow, type VideoLingoProject } from '../src-ele
 import { TaskSheetPanel } from './task-sheet.js';
 
 type Command = <T>(name: string, payload?: Record<string, unknown>) => Promise<T>;
-export function BatchPanel({ locale, bound, command, importFile, beginUrl, readSheet, projects, selectProject, client, configure }: {
-  client: NimiLocalAppClient; configure: (capability: string) => void;
+export function BatchPanel({ locale, bound, command, importFile, beginUrl, readSheet, projects, selectProject, platform, configure }: {
+  platform: VideoLingoPlatform; configure: (capability: string) => void;
   locale: string; bound: boolean; command: Command; importFile: (file: File) => Promise<VideoLingoProject>;
   projects: VideoLingoProject[]; selectProject: (id: string) => Promise<void>;
   beginUrl: (url: string) => Promise<VideoLingoProject>; readSheet: (file: File) => Promise<{ rows: TaskSheetRow[] }>;
@@ -19,13 +20,14 @@ export function BatchPanel({ locale, bound, command, importFile, beginUrl, readS
   const t = translator(locale);
   const [records, setRecords] = useState<Batch[]>([]);
   const [batch, setBatch] = useState<Batch | null>(null);
-  const [items, setItems] = useState<(BatchItemInput & { title: string })[]>([]);
-  const [title, setTitle] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
-  const [existing, setExisting] = useState('');
+  const [items, setItems] = useWorkspaceDraft<(BatchItemInput & { title: string })[]>('batch-items', () => []);
+  const [title, setTitle] = useWorkspaceDraft('batch-title', () => ''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  const [existing, setExisting] = useWorkspaceDraft('batch-existing', () => '');
   const [voiceBusy, setVoiceBusy] = useState(false);
+  const [createOpen,setCreateOpen]=useWorkspaceDraft('batch-create-open',()=>false);
   const perform = async (work: () => Promise<void>) => { setBusy(true); setError(''); try { await work(); } catch (error) { setError(errorText(error)); } finally { setBusy(false); } };
   const refresh = async () => { const values = (await command<Batch[]>('batches.list')).filter(record => !record.purpose || record.purpose === 'batch'); setRecords(values); setBatch(current => values.find(value => value.id === current?.id) || values.at(-1) || null); };
-  useEffect(() => { if (bound) void perform(refresh); else { setBatch(null); setRecords([]); setItems([]); } }, [bound]);
+  useEffect(() => { if (bound) void perform(refresh); else { setBatch(null); setRecords([]); } }, [bound]);
   useEffect(() => {
     if (!bound || !batch?.id || batch.state !== 'running') return;
     let active = true;
@@ -59,15 +61,14 @@ export function BatchPanel({ locale, bound, command, importFile, beginUrl, readS
       <ol>{batch.items.map(item => <li key={item.id}><Button tone="secondary" onClick={() => void perform(() => selectProject(item.projectId))}>{item.title}</Button> · {item.state} · {item.step}
         {item.noSpeech && <span> · {t('No speech', '未识别到语音')}</span>}{item.error && <p role="alert">{item.error}</p>}
         <div className="vl-row">{item.outputs?.map(file => <Button key={file} tone="secondary" onClick={() => void perform(async () => { await command('project.export', { projectId: item.projectId, assetPath: file }); })}>{file.split('/').pop()}</Button>)}</div></li>)}</ol></>}
-    <details><summary>{t('Create a batch', '创建批次')}</summary><fieldset disabled={!bound || busy || voiceBusy} className="vl-batch-editor">
+    <details open={createOpen} onToggle={event=>setCreateOpen(event.currentTarget.open)}><summary>{t('Create a batch', '创建批次')}</summary><fieldset disabled={!bound || busy || voiceBusy} className="vl-batch-editor">
       <TaskSheetPanel locale={locale} disabled={!bound || busy || voiceBusy} projects={projects} readSheet={readSheet} importFile={importFile} beginUrl={beginUrl}
         getProject={id => command<VideoLingoProject>('project.get', { projectId: id })} openProject={selectProject} addItems={values => {
           if (values.some(value => items.some(item => item.projectId === value.projectId))) throw new Error(t('A selected project is already in this queue.', '所选项目已在当前队列中。'));
           setItems(previous => [...previous, ...values]);
         }} />
       <label>{t('Batch name', '批次名称')} <input value={title} disabled={busy} onChange={event => setTitle(event.target.value)} /></label>
-      <input aria-label="batch-media-files" type="file" multiple disabled={!bound || busy || voiceBusy} accept=".mp4,.mov,.avi,.mkv,.flv,.wmv,.webm,.wav,.mp3,.flac,.m4a" onChange={event => {
-        const files = Array.from(event.target.files || []); event.target.value = '';
+      <WorkspaceFileInput inputKey="batch-media" pickerLabel={t('Choose batch media', '选择批量媒体')} aria-label="batch-media-files" multiple disabled={!bound || busy || voiceBusy} accept=".mp4,.mov,.avi,.mkv,.flv,.wmv,.webm,.wav,.mp3,.flac,.m4a" onFiles={files => {
         void perform(async () => { for (const file of files) add(await importFile(file)); });
       }} />
       <div className="vl-row"><select aria-label="batch-existing-project" value={existing} onChange={event => setExisting(event.target.value)}><option value="">{t('Or choose an imported project', '或选择已导入项目')}</option>
@@ -80,7 +81,7 @@ export function BatchPanel({ locale, bound, command, importFile, beginUrl, readS
         <label><input type="checkbox" checked={!!item.dubbing} onChange={event => patch(index, { dubbing: event.target.checked ? dubbingSettingsFor(projects.find(project => project.id === item.projectId)!) : undefined })} />{t('Include dubbing and background mixing', '生成配音并混合背景')}</label>
         {item.dubbing && projects.find(project => project.id === item.projectId) && <VoiceSettings
           project={projects.find(project => project.id === item.projectId)!} value={item.dubbing} change={dubbing => patch(index, { dubbing })}
-          client={client} locale={locale} disabled={busy || voiceBusy || !bound} configure={configure} onBusy={setVoiceBusy} />}
+          inputScope="batch" platform={platform} locale={locale} disabled={busy || voiceBusy || !bound} configure={configure} onBusy={setVoiceBusy} />}
         <label><input type="checkbox" checked={!!item.vocalEnhancement} disabled={busy} onChange={event => patch(index, { vocalEnhancement: event.target.checked })} />{t('Separate vocals before recognition', '转写前分离人声增强')}</label>
         <Button tone="secondary" onClick={() => setItems(previous => previous.filter((_, i) => i !== index))}>{t('Remove entry', '移除条目')}</Button>
       </div>)}

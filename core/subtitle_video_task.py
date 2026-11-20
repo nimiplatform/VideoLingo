@@ -10,7 +10,8 @@ def render_subtitles(request, workspace):
     source = Path(request['source']).resolve(strict=True)
     source.relative_to(workspace)
     with open('config.yaml', 'w', encoding='utf-8') as file:
-        YAML().dump({'burn_subtitles': True, 'ffmpeg_gpu': request.get('businessSettings', {}).get('ffmpeg_gpu', False),
+        YAML().dump({**request.get('businessSettings', {}), 'burn_subtitles': True,
+                     'ffmpeg_gpu': request.get('businessSettings', {}).get('ffmpeg_gpu', False),
                      'allowed_video_formats': ['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'webm'],
                      'allowed_audio_formats': ['wav', 'mp3', 'flac', 'm4a']}, file)
     write_input_manifest(str(source), 'video')

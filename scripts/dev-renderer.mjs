@@ -8,7 +8,7 @@ for (const key of ['SystemRoot', 'WINDIR', 'SystemDrive', 'TEMP', 'TMP', 'USERPR
 }
 env.PYTHONUTF8 = '1';
 env.PYTHONNOUSERSITE = '1';
-const child = spawn(python, ['-X', 'utf8', '-m', 'streamlit', 'run', 'st.py', '--server.address=127.0.0.1', '--server.port=1467',
+const child = spawn(python, ['-X', 'utf8', '-m', 'streamlit', 'run', 'st.py', '--server.address=127.0.0.1', '--server.port=1471',
   '--server.headless=true', '--browser.gatherUsageStats=false'], { stdio: 'inherit', windowsHide: true, env });
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));
 child.once('error', error => { console.error(error); process.exitCode = 1; });
