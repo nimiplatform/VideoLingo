@@ -10,26 +10,31 @@ Chat Completions, with structured JSON required by several processing steps.
 Use a model supported by your endpoint; parameter count alone does not establish
 translation quality or JSON reliability. Enable JSON mode only if supported.
 
-For example, an OpenRouter API URL is `https://openrouter.ai/api/v1`; no particular
-model is required. A local compatible server can also be used. The application
-requires a non-empty key field even when that server does not authenticate requests;
-use a placeholder only for a server that explicitly ignores the key. Edge TTS
-requires network access and is not an offline synthesizer.
+[OpenLux](https://www.openlux.ai/register?aff=wKYu) is the recommended relay. Set the API base URL to `https://api.openlux.ai/v1`. Pick one of the three models below. Prices are approximate OpenLux auto-routing group rates measured on the gateway (USD per 1M tokens; they vary by routing group):
+
+| Recommendation | Model ID | Input | Output |
+|:---------------|:---------|------:|-------:|
+| Default, best value | `gpt-6-luna` | $0.006 | $0.029 |
+| Better quality | `gpt-6-sol` | $0.074 | $0.37 |
+| Best quality | `claude-opus-5-5` | $0.71 | $3.53 |
+
+Other OpenAI-compatible providers also work, for example OpenRouter at `https://openrouter.ai/api/v1`, or a local compatible server. The application requires a non-empty key field even when that server does not authenticate requests; use a placeholder only for a server that explicitly ignores the key. Edge TTS requires network access and is not an offline synthesizer.
 
 ### 2. **TTS API**
 VideoLingo provides multiple TTS integration methods. Here's a comparison (skip if only using translation without dubbing)
 
 | TTS Solution | Provider | Pros | Cons | Chinese Effect | Non-Chinese Effect |
 |:---------|:---------|:-----|:-----|:---------|:-----------|
-| 🔊 Azure TTS ⭐ | [302AI](https://gpt302.saaslink.net/C2oHR9) | Natural effect | Limited emotions | 🤩 | 😃 |
-| 🎙️ OpenAI TTS | [302AI](https://gpt302.saaslink.net/C2oHR9) | Realistic emotions | Chinese sounds foreign | 😕 | 🤩 |
-| 🎤 Fish TTS | [302AI](https://gpt302.saaslink.net/C2oHR9) | Authentic native | Limited official models | 🤩 | 😂 |
+| 🎙️ OpenAI TTS | [OpenLux](https://www.openlux.ai/register?aff=wKYu) | Realistic emotions | Chinese sounds foreign | 😕 | 🤩 |
+| 🎙️ Fish Audio | [Fish Audio](https://fish.audio) | Clones the voice of the video, or uses any voice of fish.audio | Paid API | 🤩 | 😃 |
 | 🎙️ SiliconFlow FishTTS | [SiliconFlow](https://cloud.siliconflow.cn/i/ttKDEsxE) | Voice Clone | Unstable cloning effect | 😃 | 😃 |
 | Edge TTS | Online service | No separate API key in this adapter | Requires network access | — | — |
 | 🗣️ GPT-SoVITS | Local | Best voice cloning | Only supports Chinese/English, requires local inference, complex setup | 🏆 | 🚫 |
 
 - For SiliconFlow FishTTS, get key from [SiliconFlow](https://cloud.siliconflow.cn/i/ttKDEsxE), note that cloning feature requires paid credits;
-- For OpenAI TTS, Azure TTS, and Fish TTS, use [302AI](https://gpt302.saaslink.net/C2oHR9) - one API key provides access to all three services
+- For OpenAI TTS, use [OpenLux](https://www.openlux.ai/register?aff=wKYu) with the same key as for the LLM. Another service with the speech endpoint of OpenAI works with `openai_tts.base_url` and `openai_tts.model` in `config.yaml`;
+- For Fish Audio, get the key at [fish.audio](https://fish.audio/app/api-keys/). The API is billed by usage and needs credit in the account; cloning costs nothing extra;
+- For F5-TTS, use [302AI](https://gpt302.saaslink.net/C2oHR9). It clones the voice of the video;
 > For a custom TTS adapter, edit `core/tts_backend/custom_tts.py`.
 
 <details>
@@ -46,22 +51,28 @@ Currently supports 3 modes:
 <details>
 <summary>How to choose OpenAI voices?</summary>
 
-Voice list can be found on the [official website](https://platform.openai.com/docs/guides/text-to-speech/voice-options), such as `alloy`, `echo`, `nova`, etc. Modify `openai_tts.voice` in `config.yaml`.
+Voice list can be found on the [official website](https://platform.openai.com/docs/guides/text-to-speech/voice-options), such as `alloy`, `echo`, `nova`, etc. Modify `openai_tts.voice` in `config.yaml`. The default model is `gpt-4o-mini-tts`.
 
 </details>
 <details>
-<summary>How to choose Azure voices?</summary>
+<summary>How to choose Fish Audio voices?</summary>
 
-Recommended to try voices in the [online demo](https://speech.microsoft.com/portal/voicegallery). You can find the voice code in the code on the right, e.g. `zh-CN-XiaoxiaoMultilingualNeural`
+Select the provider `Fish Audio` in the page. There are two modes:
+
+- **Voice of the video (cloned)**: the default. The first 15-30 seconds of speech of the video are the reference of all lines. Nothing is stored in your Fish Audio account. Clone only voices that you are allowed to use.
+- **Fixed voice**: the list has two voices, `语彤 Yutong` and `浩然 Haoran`. For any other voice, select `Another voice of fish.audio`, find a voice that you like on [fish.audio](https://fish.audio), open it and paste the address of its page or its ID.
+
+To have your favourite voices in the list, add them with a name and their ID to `fish_audio.voices` in `config.yaml`. The model is `fish_audio.model`, by default `s2.1-pro`.
 
 </details>
 
 <details>
-<summary>How to choose Fish TTS voices?</summary>
+<summary>How to choose Edge TTS voices?</summary>
 
-Go to the [official website](https://fish.audio/en/) to listen and choose voices. Find the voice code in the URL, e.g. Dingzhen is `54a5170264694bfc8e9ad98df7bd89c3`. Popular voices are already added in `config.yaml`. To use other voices, modify the `fish_tts.character_id_dict` dictionary in `config.yaml`.
+Edge TTS is the default and needs no API key. Run `edge-tts --list-voices` to list the voices, e.g. `zh-CN-XiaoxiaoNeural` or `en-US-JennyNeural`, and select one of the target language. Modify `edge_tts.voice` in `config.yaml` or in the sidebar.
 
 </details>
+
 
 <details>
 <summary>GPT-SoVITS-v2 Tutorial</summary>
@@ -116,70 +127,116 @@ After configuration, select `Reference Audio Mode` in the sidebar (see Yuque doc
 
 ## 🛠️ Quick Start
 
-VideoLingo supports Windows, macOS and Linux systems, and can run on CPU or GPU.
+VideoLingo supports Windows, macOS (Apple Silicon / Intel), and Linux.
 
-### Prerequisites
+### Ask your local AI agent 🤖
 
-Install [Git](https://git-scm.com/downloads), [uv](https://docs.astral.sh/uv/getting-started/installation/) and [FFmpeg](https://ffmpeg.org/download.html). The linked uv page provides standalone installers that do not require Python. Reopen your terminal and check `git --version`, `uv --version` and `ffmpeg -version`.
+If your AI agent can operate your computer, tell it:
 
-On Windows, choose an FFmpeg shared-library build and add its `bin` directory to PATH. On macOS use `brew install ffmpeg`; on Debian/Ubuntu use `sudo apt install ffmpeg`. TorchCodec needs compatible FFmpeg shared libraries in addition to the CLI. Subtitle rendering needs the subtitles filter and suitable fonts; the installer checks/installs Noto CJK fonts on Linux.
+> Install and launch GitHub's Huanshere/VideoLingo on my computer.
 
-<a id="ffmpeg-runtime"></a>
-The pinned TorchCodec 0.7 supports FFmpeg 4–7, not FFmpeg 8/9. Use a shared
-FFmpeg 7 build. On Windows, this [BtbN 7.1 shared build](https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2025-07-31-14-15/ffmpeg-n7.1.1-56-gc2184b65d2-win64-gpl-shared-7.1.zip)
-was downloaded and verified with real audio decoding. Extract it and put its
-`bin` directory ahead of other FFmpeg versions on PATH. VideoLingo registers that
-directory for Windows DLL loading. Package managers may supply newer incompatible
-FFmpeg libraries, so check the version rather than assuming latest works.
+### Windows: double-click to install 🎉
+
+1. Download **Source code (zip)** from the [latest Release](https://github.com/Huanshere/VideoLingo/releases/latest), extract it to your Desktop or another folder, and open the folder.
+2. Double-click `OneKeyStart.bat` and keep the window open. On the first run, it automatically installs uv, Python 3.12, app dependencies, and FFmpeg. An internet connection is required.
+3. After installation, VideoLingo opens automatically in your browser. Enter your API URL, key, and model in the sidebar to start using it.
+
+If you use an NVIDIA GPU, install a compatible driver first; see [GPU runtime](#gpu-runtime).
+
+### Install from source (Windows, macOS, Linux)
+
+```bash
+git clone https://github.com/Huanshere/VideoLingo.git && cd VideoLingo
+uv run start.py
+```
+
+To start it later, run `uv run start.py` again from the VideoLingo folder. Apple Silicon uses MLX; Intel Macs use CPU recognition. By default, Intel Mac dubbing uses the new voice without the original background sound.
+
+![tutorial](./en_page.png)
+
+<a id="asr-runtime"></a>
+### Speech recognition (Qwen3-ASR + ForcedAligner)
+
+Local recognition transcribes with **Qwen3-ASR** and then produces word timestamps with **Qwen3-ForcedAligner-0.6B**. With vocal separation enabled, transcription uses the original audio and alignment uses the separated vocals.
+
+- **Model size**: `whisper.qwen_model` in `config.yaml` (not in the sidebar). `1.7b` (default) is more accurate; `0.6b` is faster and uses less memory. The aligner is always ForcedAligner-0.6B.
+- **Engine**: `whisper.qwen_engine: auto` selects it automatically; you normally do not need to change it. `audiocpp` is an optional engine that uses a running audio.cpp server, see [below](#audiocpp-engine).
+
+| Platform | Engine | Models | Notes |
+|:---------|:-------|:-------|:------|
+| Apple Silicon Mac | MLX (mlx-audio) | `mlx-community/Qwen3-ASR-{1.7B,0.6B}-8bit`, `mlx-community/Qwen3-ForcedAligner-0.6B-8bit` | Requires **macOS 14 or newer** (mlx only ships macOS ≥14 arm64 wheels) |
+| Windows / Linux + NVIDIA | Official qwen-asr (transformers) | `Qwen/Qwen3-ASR-{1.7B,0.6B}`, `Qwen/Qwen3-ForcedAligner-0.6B` | `cuda:0`, bf16 when the GPU supports it, otherwise fp16 |
+| Windows / Linux without NVIDIA | Same | Same | CPU fp32 works but is **slow**; prefer 0.6B or the ElevenLabs runtime |
+| Intel Mac | Official qwen-asr (transformers) | `Qwen/Qwen3-ASR-{1.7B,0.6B}`, `Qwen/Qwen3-ForcedAligner-0.6B` | CPU fp32 with PyTorch 2.2.2 installed automatically; recognition is slow, so prefer 0.6B. Optional vocal separation is not installed automatically |
+
+- On Apple Silicon the default requirements install mlx-audio, not qwen-asr; using `qwen_engine: transformers` there needs a separate environment. Below macOS 14 the installer stops with an error. If an older environment has WhisperX, rerunning `installer.py` first uninstalls the WhisperX stack (whisperx, torchcodec, faster-whisper, ctranslate2, pyannote-*), which conflicts with the MLX dependencies.
+- **Model downloads**: models are downloaded from Hugging Face on first use (several GB for 1.7B plus the aligner). Set `HF_ENDPOINT` to use a mirror. If `_model_cache/<last part of the repo id>/config.json` exists (for example `_model_cache/Qwen3-ASR-1.7B`), that local copy is used.
+- **Languages**: every recognition language in the sidebar is supported (Qwen3-ASR supports 30 languages). With `Auto`, each window of about 3 minutes is first probed with up to three 20 s clips, the clips vote on the language, and the window is then transcribed with that language forced (recognition takes about a third longer); for mixed speech the first language reported is treated as primary. If `Auto` detects a language outside the sidebar list (e.g. Korean, Vietnamese, Thai), sentence splitting picks a spaced or unspaced joiner automatically and uses the matching spaCy pipeline, or punctuation-only splitting when spaCy has none.
+- **Degenerate output**: if a window's transcript is one phrase looping, or much shorter than what its probe clips heard, it is retried in 60 s windows; if it is still degenerate, recognition stops with an error asking you to set the language, instead of passing a broken transcript on. With a manually selected language, a window whose transcript is unusually sparse (under 2 letters/digits per second) is checked against a few auto-language probe clips; if they heard far more it fails, and if the probes heard a different language it fails right away with a hint that the selected language may not match the audio (use auto or switch the model size), instead of passing a retry in another language downstream. A transcript whose writing system clearly does not fit the selected language (e.g. Korean text with English or Chinese selected, Japanese with almost no kana) fails the same way; that check reads the text only, adds no recognition time and runs after each window, so it stops at the first mismatching window. Silence and music never trigger this.
+- **Known limitation**: choosing the wrong language among languages written in Latin letters (e.g. Spanish selected for an English video) cannot be detected. The model may **translate** some windows into the selected language instead of transcribing what was said, leaving part original and part translation. Prefer `Auto`, or double-check the recognition language before processing.
+- The transcription cache distinguishes backend, model size and engine; changing any of them re-runs recognition.
+- WhisperX is not an installer option. To use it (including the Belle model for Chinese), install the packages yourself: [WhisperX (manual install)](whisperx-manual.en-US.md).
+- The official `qwenllm/qwen3-asr` Docker image can host a standalone Qwen3-ASR service, but VideoLingo does not call it directly.
+
+<a id="audiocpp-engine"></a>
+#### Optional audio.cpp engine
+
+[audio.cpp](https://github.com/0xShug0/audio.cpp) runs the same Qwen3-ASR and Qwen3-ForcedAligner models as GGUF files in a native server, without PyTorch. With `whisper.qwen_engine: audiocpp`, VideoLingo sends each window to that server and keeps everything else of the Qwen path: windows, language probes, degenerate-output checks, alignment on the vocal track and punctuation mapping. It is never selected by `auto`, and the installer does not install audio.cpp or its models.
+
+1. Download a build for your platform from the [audio.cpp releases](https://github.com/0xShug0/audio.cpp/releases) (for an NVIDIA GPU, a CUDA build plus its matching `cudart` package), and the GGUF files `Qwen3-ASR-1.7B-GGUF/qwen3-asr-1.7b-q8_0.gguf` (or 0.6B) and `Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-q8_0.gguf` from [audio-cpp/audio.cpp-gguf](https://huggingface.co/audio-cpp/audio.cpp-gguf).
+2. Start `audiocpp_server --config server.json` with these model ids, which VideoLingo uses as the request `model`:
+
+```json
+{
+  "host": "127.0.0.1", "port": 8080, "backend": "cuda", "lazy_load": true, "max_loaded_models": 0,
+  "models": [
+    {"id": "Qwen3-ASR-1.7B", "family": "qwen3_asr", "path": "/path/to/qwen3-asr-1.7b-q8_0.gguf", "task": "asr", "mode": "offline"},
+    {"id": "Qwen3-ForcedAligner-0.6B", "family": "qwen3_forced_aligner", "path": "/path/to/qwen3-forced-aligner-0.6b-q8_0.gguf", "task": "align", "mode": "offline"}
+  ]
+}
+```
+
+3. In `config.yaml`, set `whisper.qwen_engine: audiocpp`, and `whisper.audiocpp_url` if the server is not at `http://127.0.0.1:8080`. `whisper.qwen_model` picks the `Qwen3-ASR-1.7B` or `Qwen3-ASR-0.6B` id.
+
+Windows are at most 90 s with this engine, because the audio.cpp forced aligner rejects clips of about 115 s or more. Audio is sent to the server as 16 kHz WAV over HTTP. The transcription cache keeps audio.cpp results apart from the other engines, but does not track which GGUF files or audio.cpp version the server uses: after changing them, delete `.cache/asr` to transcribe again.
+
+#### Optional MAI-Transcribe-2 (Azure Speech or OpenRouter)
+
+Choose **ASR Runtime → MAI-Transcribe-2** in the sidebar, then select **Azure Speech** or **OpenRouter** as the MAI provider. Azure uses `whisper.mai_api_key` and `whisper.mai_region` (a region such as `eastus`, a resource endpoint, or blank for detection). OpenRouter uses its own key field, `whisper.mai_openrouter_api_key`; no Azure region is needed. Existing configurations without `whisper.mai_provider` continue to use Azure. The default ASR runtime remains local Qwen3-ASR.
+
+Azure MAI uses the fast transcription API; OpenRouter uses its [dedicated audio transcription API](https://openrouter.ai/docs/guides/overview/multimodal/stt) with model `microsoft/mai-transcribe-2`. Both request clean text and word timestamps. OpenRouter uploads are split into roughly two-minute clips to fit its processing timeout. Audio is sent to the selected cloud provider and may incur charges. Azure MAI-Transcribe-2 is in public preview without an SLA; check that your resource region supports it. Provider and API version distinguish cached transcripts; credentials and resource region are excluded from cache identity. The [contributor's evaluation in #618](https://github.com/Huanshere/VideoLingo/pull/618) compared MAI with WhisperX, not the current Qwen3-ASR default.
+
+<a id="storage"></a>
+### Where files are stored
+
+| What | Location | Shared with other tools |
+|:-----|:---------|:------------------------|
+| Python environment | `.venv` in the project folder, or `~/.venvs/videolingo` with `setup_env.py --shared` (found first by `start.py` and `OneKeyStart.bat`) | No. WhisperX, if used, must be installed into this environment |
+| Recognition models (Qwen, WhisperX, aligners) | Hugging Face cache: `~/.cache/huggingface/hub`, or `$HF_HOME/hub` when `HF_HOME` is set | Yes. Every Hugging Face tool reads the same cache |
+| Pre-placed models | `model_dir` in `config.yaml` (default `_model_cache`), checked before the cache. Qwen uses `_model_cache/<last part of the repo id>` (for example `_model_cache/Qwen3-ASR-1.7B`). WhisperX uses `_model_cache/<model name>` (for example `_model_cache/large-v3`; with recognition language `zh`, `_model_cache/Belle-whisper-large-v3-zh-punct-fasterwhisper`) | Only by copying |
+| FFmpeg and ffprobe | Downloaded into the environment by the installer, or the folder in `VIDEOLINGO_FFMPEG_DIR` | Yes, with `VIDEOLINGO_FFMPEG_DIR` |
+
+The installer does not set environment variables.
+
+To reuse what is already on your computer, set these as user environment variables before starting VideoLingo:
+
+- `HF_HOME`: the cache folder of another tool that already downloaded the models (for example a standalone WhisperX), so they are not downloaded again.
+- `VIDEOLINGO_FFMPEG_DIR`: a folder that contains both `ffmpeg` and `ffprobe`. The build is checked for the filters and encoders VideoLingo needs.
+
+`uv run start.py --check` lists the models found in the cache, the local model folder and the FFmpeg in use.
 
 <a id="gpu-runtime"></a>
 ### GPU runtime
 
 - Install a driver compatible with your NVIDIA GPU. `nvidia-smi` reports the driver's CUDA capability, not an installed Toolkit version.
 - On hosts, the installer selects PyTorch `cu128` for a reported capability >=12.8, otherwise `cu126` when NVIDIA is detected. An unreadable capability falls back to cu126, which is not a guarantee of compatibility with an old driver. Without NVIDIA it selects CPU packages. Compatible existing packages may be reused.
-- Local WhisperX GPU execution needs **CUDA 12 cuBLAS and cuDNN 9** accessible to the process. See [faster-whisper's GPU requirements](https://github.com/SYSTRAN/faster-whisper#gpu) and [CTranslate2 4.5's cuDNN 9 transition](https://github.com/OpenNMT/CTranslate2/releases/tag/v4.5.0).
-- If the libraries are missing on Windows, obtain CUDA 12 libraries from NVIDIA's [CUDA 12.8 Update 1 archive](https://developer.nvidia.com/cuda-12-8-1-download-archive) and cuDNN 9 **for CUDA 12** from [NVIDIA](https://developer.nvidia.com/cudnn-downloads). Add the actual DLL directories to PATH and reopen the terminal. Do not invent a cuDNN directory by substituting the PyTorch build tag into an example path.
-- On Linux, follow faster-whisper's linked instructions for exposing the installed cuBLAS/cuDNN libraries through `LD_LIBRARY_PATH` before starting Python. The Docker image includes these runtime libraries.
+- The default Qwen3-ASR runs on PyTorch and uses the CUDA runtime bundled with the PyTorch wheels; no separate cuBLAS/cuDNN installation is needed. A manual WhisperX install needs CUDA 12 cuBLAS and cuDNN 9; see [WhisperX (manual install)](whisperx-manual.en-US.md#cuda-runtime).
 
 The installer selects Python wheels; it does not install a system CUDA Toolkit. Newer CUDA 13-capable drivers do not require CUDA 13 Python packages for this project.
 
-### Install with uv
+## HTTP API
 
-uv provisions Python 3.13 in `.venv`. Existing application environments are supported on Python 3.10–3.13. The bootstrap command below does not require a preinstalled Python.
-
-1. Clone the project:
-   ```bash
-   git clone https://github.com/Huanshere/VideoLingo.git
-   cd VideoLingo
-   ```
-
-2. Create the environment and install dependencies:
-   ```bash
-    uv run --no-project --python 3.13 setup_env.py
-   ```
-
-   `setup_env.py` delegates to `installer.py`: bootstrap packages, matched Torch/torchaudio/torchvision, application requirements, spaCy/WhisperX checks, optional PyPI Demucs 4.1, project metadata, fonts and environment checks. Demucs uses normal dependency resolution. Use `--shared` to select `~/.venvs/videolingo`, or `--path` for a custom location.
-
-3. 🎉 Launch Streamlit app:
-   ```bash
-   .venv\Scripts\streamlit run st.py        # Windows
-   .venv/bin/streamlit run st.py            # macOS / Linux
-   ```
-   Or double-click `OneKeyStart.bat` on Windows.
-
-4. Open `http://localhost:8501` and configure your OpenAI-compatible API URL, key and model in the sidebar. `OneKeyStart.bat` prefers the shared venv, then the project's `.venv`; use the explicit environment command above if you want that checkout's local environment.
-
-   ![tutorial](./en_page.png)
-
-5. (Optional) More settings can be manually modified in `config.yaml`, watch command line output during operation. To use custom terms, add them to `custom_terms.xlsx` before processing, e.g. `Baguette | French bread | Not just any bread!`.
-
-> Need help? Our [AI Assistant](https://share.fastgpt.in/chat/share?shareId=066w11n3r9aq6879r4z0v9rh) is here to guide you through any issues!
-
-## 🏭 Batch Mode (beta)
-
-Document: [English](/batch/README.md) | [Chinese](/batch/README.zh.md)
-
-Note: This section is still in early development and may have limited functionality
+The local HTTP API replaces Excel batch mode and shares the Streamlit pipeline. See the [API guide](https://github.com/Huanshere/VideoLingo/blob/main/docs/api.md).
 
 ## 🚨 Common Errors & Pitfalls
 
@@ -190,19 +247,16 @@ Note: This section is still in early development and may have limited functional
 
 2. **'Retry Failed', 'SSL', 'Connection', 'Timeout'**: Usually network issues. Solution: Users in mainland China please switch network nodes and retry.
 
-3. **local_files_only=True**: The selected local model or cache is incomplete. Check the model path and required files. An offline lookup cannot download missing weights; a ping alone does not establish model availability.
+3. **`Qwen ASR engine '...' needs the 'qwen-asr' package`** (or `mlx-audio`): the recognition package is missing. Close VideoLingo, then start it again to repair: double-click `OneKeyStart.bat` on Windows, or run `uv run start.py` for a source installation. On Apple Silicon, if you set `qwen_engine: transformers` manually, change it back to `auto`.
 
-4. **`cublas64_12.dll not found`**: The process cannot locate CUDA 12 cuBLAS. Check the selected environment, its Torch CUDA build and library search paths using the GPU instructions above. A newer driver alone does not supply this DLL.
+4. **`Qwen3-ASR could not detect the language`** or **`... is still degenerate after retrying`**: `Auto` could not determine the language, or the transcript degenerated (a looping phrase, far too little text). Select the recognition language explicitly in the sidebar and retry, or try the other model size.
 
-5. **Whisper model loading segfaults silently**: ctranslate2 version mismatches cuDNN version. **Solution:** Ensure `ctranslate2>=4.5.0` (supports cuDNN 9, which PyTorch 2.6+ ships with).
+5. **CUDA out of memory**: set `whisper.qwen_model` to `0.6b` in `config.yaml`, or close other programs using the GPU.
 
-6. **`RuntimeError: Weights only load failed`**: PyTorch ≥2.6 changed `torch.load` default behavior. **Solution:** Already fixed via monkey-patch in `whisperX_local.py`. If you see this, your code is not up to date.
+6. **mlx cannot be resolved / no matching distribution on macOS**: mlx only ships wheels for Apple Silicon on macOS 14 or newer. Upgrade macOS first.
 
-7. **WhisperX transcription hangs in Streamlit (CPU/GPU idle)**: `librosa.load()` deadlocks in Streamlit's non-main thread. **Solution:** Already fixed by replacing with `whisperx.audio.load_audio()` (ffmpeg subprocess). If you see this, your code is not up to date.
+7. **WhisperX errors** (`cublas64_12.dll not found`, segfaults, `Weights only load failed`, TorchCodec, etc.): these only occur with the WhisperX backend selected; see [WhisperX (manual install)](whisperx-manual.en-US.md#common-errors).
 
-8. **spaCy model missing**: Check that the model was installed into the same environment used to launch VideoLingo. For example, install the English model using that environment's Python:
-   ```bash
-    .venv\Scripts\python -m spacy download en_core_web_md
-   ```
+8. **spaCy model missing**: VideoLingo normally downloads the model when it is first needed. Check your internet connection, then retry the step.
 
-9. **Torch package versions disagree**: Run the selected environment's `python installer.py --check`, then `python installer.py` to repair. The supported family is Torch/torchaudio 2.8.0 with torchvision 0.23.0, using one matching CPU/CUDA build. Current Demucs is PyPI 4.1, not the older Git package requiring a `--no-deps` workaround.
+9. **Torch package versions disagree**: Close VideoLingo, then start it again to repair: double-click `OneKeyStart.bat` on Windows, or run `uv run start.py` for a source installation. Intel Macs use Torch/torchaudio 2.2.2 with torchvision 0.17.2; other platforms use 2.8.0 with 0.23.0. Keep the three packages matched. Demucs is not installed automatically on Intel Macs.

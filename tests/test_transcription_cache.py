@@ -38,6 +38,55 @@ class TranscriptionCacheTests(unittest.TestCase):
         self.media.write_bytes(b"synthetic input two")
         self.assertNotEqual(key, cache.cache_key(self.media, self.whisper, False))
 
+    def test_identity_separates_local_backends_and_qwen_options(self):
+        local = dict(self.whisper, runtime="local", backend="qwen", qwen_model="1.7b", qwen_engine="transformers")
+        key = cache.cache_key(self.media, local, False)
+        self.assertEqual(key, cache.cache_key(self.media, dict(local), False))
+        for change in ({"backend": "whisperx"}, {"qwen_model": "0.6b"}, {"qwen_engine": "mlx"}):
+            self.assertNotEqual(key, cache.cache_key(self.media, dict(local, **change), False))
+
+    def test_mai_cache_ignores_credentials_and_local_model_settings(self):
+        mai = dict(self.whisper, runtime="mai", backend="qwen", qwen_model="1.7b",
+                   qwen_engine="mlx", mai_api_key="secret", mai_region="eastus")
+        key = cache.cache_key(self.media, mai, False)
+        changed = dict(mai, backend="whisperx", qwen_model="0.6b", qwen_engine="transformers",
+                       model="tiny", mai_api_key="other-secret", mai_region="westus")
+        self.assertEqual(key, cache.cache_key(self.media, changed, False))
+        router = dict(mai, mai_provider="openrouter", mai_openrouter_api_key="router-secret")
+        router_key = cache.cache_key(self.media, router, False)
+        self.assertNotEqual(key, router_key)
+        self.assertEqual(router_key, cache.cache_key(
+            self.media, dict(router, mai_openrouter_api_key="another-router-secret"), False))
+        self.assertNotEqual(key, cache.cache_key(self.media, dict(mai, runtime="local"), False))
+        self.assertNotEqual(key, cache.cache_key(self.media, dict(mai, language="ja"), False))
+
+    def test_whisperx_turbo_shares_large_v3_key_but_qwen_does_not(self):
+        whisperx = dict(self.whisper, runtime="local", backend="whisperx", model="large-v3")
+        turbo = dict(whisperx, model="large-v3-turbo")
+        self.assertEqual(cache.cache_key(self.media, whisperx, False), cache.cache_key(self.media, turbo, False))
+        self.assertEqual(
+            cache.cache_key(self.media, dict(turbo, model="Large-v3-Turbo"), False),
+            cache.cache_key(self.media, whisperx, False),
+        )
+        qwen_turbo = dict(self.whisper, runtime="local", backend="qwen", model="large-v3-turbo",
+                          qwen_model="1.7b", qwen_engine="transformers")
+        self.assertNotEqual(
+            cache.cache_key(self.media, qwen_turbo, False),
+            cache.cache_key(self.media, dict(qwen_turbo, model="large-v3"), False),
+        )
+
+    def test_identity_tracks_asr_package_versions(self):
+        versions = {"qwen-asr": "0.0.6", "transformers": "4.57.6"}
+        def version(name):
+            if name not in versions:
+                raise cache.PackageNotFoundError(name)
+            return versions[name]
+        with patch.object(cache, "version", side_effect=version):
+            key = cache.cache_key(self.media, self.whisper, False)
+            for name in ("qwen-asr", "mlx-audio", "transformers"):
+                with patch.dict(versions, {name: "9.9.9"}):
+                    self.assertNotEqual(key, cache.cache_key(self.media, self.whisper, False))
+
     def test_corrupt_and_invalid_results_are_misses(self):
         cache.write_result("key", "complete", result(), "en")
         path = cache.CACHE_DIR / "key/complete.json"

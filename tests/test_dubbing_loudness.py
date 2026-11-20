@@ -78,12 +78,12 @@ def test_ffmpeg_failure_is_reported(tmp_path, normalize):
 
 
 @pytest.mark.parametrize('burn_subtitles', [True, False])
-def test_final_video_merge_with_real_ffmpeg(tmp_path, monkeypatch, burn_subtitles):
+@pytest.mark.parametrize('has_background', [True, False])
+def test_final_video_merge_with_real_ffmpeg(tmp_path, monkeypatch, burn_subtitles, has_background):
     from core import _1_ytdlp, _12_dub_to_vid as merge
 
     if not shutil.which('ffmpeg') or not shutil.which('ffprobe'):
         pytest.skip('FFmpeg and FFprobe are required')
-    # Every generated file stays in the isolated workspace, including relative paths.
     monkeypatch.chdir(tmp_path)
     Path('output').mkdir()
     source = Path('output/source.mp4')
@@ -91,14 +91,16 @@ def test_final_video_merge_with_real_ffmpeg(tmp_path, monkeypatch, burn_subtitle
                     '-i', 'color=c=black:s=320x240:r=25:d=6', '-c:v', 'mpeg4', str(source)], check=True)
     tone = Sine(440, sample_rate=48000).to_audio_segment(duration=6000).apply_gain(-18)
     tone.export('output/dub.mp3', format='mp3', bitrate='64k')
-    tone.apply_gain(-12).export('output/background.wav', format='wav')
+    if has_background:
+        tone.apply_gain(-12).export('output/background.wav', format='wav')
     Path('output/dub.srt').write_text('1\n00:00:00,000 --> 00:00:06,000\nSynthetic test\n', encoding='utf-8')
     monkeypatch.setattr(_1_ytdlp, 'is_audio_only_input', lambda: False)
     monkeypatch.setattr(merge, 'find_video_files', lambda: str(source))
     monkeypatch.setattr(merge, '_BACKGROUND_AUDIO_FILE', 'output/background.wav')
     monkeypatch.setattr(merge, 'load_key', {'burn_subtitles': burn_subtitles, 'ffmpeg_gpu': False}.__getitem__)
     monkeypatch.setattr(merge, 'check_cancel', lambda: None)
-    monkeypatch.setattr(merge, 'TRANS_FONT_NAME', 'Arial')
+    monkeypatch.setattr(merge, 'get_subtitle_filter_candidates', lambda video, source, translation, width, height: [
+        f"subtitles={translation}:force_style='FontSize=17,FontName=Arial'"])
     merge.merge_video_audio()
     probe = subprocess.run(['ffprobe', '-v', 'error', '-show_streams', '-of', 'json',
                             'output/output_dub.mp4'], check=True, capture_output=True, text=True)
@@ -113,3 +115,30 @@ def test_final_video_merge_with_real_ffmpeg(tmp_path, monkeypatch, burn_subtitle
                                      '-frames:v', '1', '-pix_fmt', 'gray', '-f', 'rawvideo', 'pipe:1'])
     assert len(frame) == 320 * 240
     assert max(frame) > 100 if burn_subtitles else max(frame) < 5
+
+
+def test_reference_audio_uses_raw_track_without_demucs(tmp_path, monkeypatch):
+    import pandas as pd
+    import soundfile as sf
+    from core import _9_refer_audio as references
+
+    if not shutil.which('ffmpeg'):
+        pytest.skip('FFmpeg is required')
+    raw = tmp_path / 'raw.mp3'
+    Sine(440, sample_rate=32000).to_audio_segment(duration=1000).export(raw, format='mp3')
+    tasks = tmp_path / 'tasks.xlsx'
+    pd.DataFrame([{'number': 1, 'start_time': '00:00:00,000',
+                   'end_time': '00:00:00,500'}]).to_excel(tasks, index=False)
+    output = tmp_path / 'refers'
+    monkeypatch.setattr(references, 'find_spec', lambda name: None)
+    monkeypatch.setattr(references, 'load_key_or', lambda key, default=None: default)
+    monkeypatch.setattr(references, '_VOCAL_AUDIO_FILE', str(tmp_path / 'missing-vocal.wav'))
+    monkeypatch.setattr(references, '_RAW_AUDIO_FILE', str(raw))
+    monkeypatch.setattr(references, '_8_1_AUDIO_TASK', str(tasks))
+    monkeypatch.setattr(references, '_AUDIO_REFERS_DIR', str(output))
+
+    references.extract_refer_audio_main()
+
+    clip, rate = sf.read(output / '1.wav')
+    assert 0.49 <= len(clip) / rate <= 0.51
+    assert abs(clip).max() > 0.1

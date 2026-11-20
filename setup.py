@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 NAME = 'VideoLingo'
-VERSION = '3.0.4'
+VERSION = '3.2.0'
 
 with open('requirements.txt', encoding='utf-8') as f:
     requirements = f.read().splitlines()
@@ -9,7 +9,7 @@ with open('requirements.txt', encoding='utf-8') as f:
 setup(
     name=NAME,
     version=VERSION,
-    python_requires='>=3.10,<3.14',
+    python_requires='>=3.12,<3.13',
     packages=find_packages(include=[NAME, f'{NAME}.*']),
     install_requires=requirements
 )

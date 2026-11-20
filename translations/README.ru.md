@@ -17,7 +17,7 @@ VideoLingo объединяет распознавание речи, перев�
 Ключевые особенности:
 - 🎥 Загрузка видео с YouTube через yt-dlp
 
-- Пословное распознавание речи и временное выравнивание с WhisperX
+- Пословное распознавание речи и временное выравнивание с Qwen3-ASR + Qwen3-ForcedAligner
 
 - **📝 Сегментация субтитров на основе NLP и ИИ**
 
@@ -27,7 +27,7 @@ VideoLingo объединяет распознавание речи, перев�
 
 - Разбиение субтитров с настраиваемыми ограничениями длины
 
-- **🗣️ Дубляж с помощью GPT-SoVITS, Azure, OpenAI и других**
+- **🗣️ Дубляж с помощью GPT-SoVITS, OpenAI, Edge TTS и других**
 
 - 🚀 Запуск и обработка в один клик в Streamlit
 
@@ -73,53 +73,38 @@ https://github.com/user-attachments/assets/47d965b2-b4ab-4a0b-9d08-b49a7bf3508c
 
 **Поддержка входных языков (будет добавлено больше):**
 
-🇺🇸 Английский 🤩 | 🇷🇺 Русский 😊 | 🇫🇷 Французский 🤩 | 🇩🇪 Немецкий 🤩 | 🇮🇹 Итальянский 🤩 | 🇪🇸 Испанский 🤩 | 🇯🇵 Японский 😐 | 🇨🇳 Китайский* 😊
+🇺🇸 Английский 🤩 | 🇷🇺 Русский 😊 | 🇫🇷 Французский 🤩 | 🇩🇪 Немецкий 🤩 | 🇮🇹 Итальянский 🤩 | 🇪🇸 Испанский 🤩 | 🇯🇵 Японский 😊 | 🇨🇳 Китайский 🤩
 
-> *Для локального распознавания китайского явно выберите китайский язык, чтобы использовать Belle Whisper с улучшенной пунктуацией.
-
-Языки перевода зависят от выбранной LLM, а языки озвучивания — от метода TTS.
+Языки озвучивания зависят от выбранного метода TTS.
 
 ## Установка
 
-Возникли проблемы? Общайтесь с нашим бесплатным онлайн ИИ-агентом [**здесь**](https://share.fastgpt.in/chat/share?shareId=066w11n3r9aq6879r4z0v9rh), который поможет вам.
+VideoLingo работает в Windows, macOS (Apple Silicon / Intel) и Linux.
 
-Установите [Git](https://git-scm.com/downloads), [uv](https://docs.astral.sh/uv/getting-started/installation/) и [FFmpeg](https://ffmpeg.org/download.html). Откройте терминал заново и проверьте `git --version`, `uv --version` и `ffmpeg -version`.
+### Попросите локального ИИ-агента 🤖
 
-Для NVIDIA нужен совместимый с GPU драйвер. Установщик выбирает PyTorch `cu128`, если `nvidia-smi` сообщает CUDA >=12.8, иначе `cu126`; без NVIDIA используются пакеты CPU. Это выбор пакетов Python, а не установка системного CUDA Toolkit. Для WhisperX на GPU также нужны доступные процессу библиотеки CUDA 12 cuBLAS и cuDNN 9; см. [требования GPU](../docs/pages/docs/start.en-US.md#gpu-runtime).
+Если ваш ИИ-агент может управлять этим компьютером, отправьте ему запрос:
 
-> **Примечание:** Требуется FFmpeg. Установите его через менеджеры пакетов:
-> - Windows: выберите сборку с **разделяемыми библиотеками** на [странице FFmpeg](https://ffmpeg.org/download.html) и добавьте её каталог `bin` в PATH.
-> - macOS: ```brew install ffmpeg``` (через [Homebrew](https://brew.sh/))
-> - Linux: ```sudo apt install ffmpeg``` (Debian/Ubuntu)
+> Установи и запусти Huanshere/VideoLingo с GitHub на моём компьютере.
 
-### Установка через uv
+### Windows: установка двойным щелчком 🎉
 
-uv загружает Python 3.13 и создаёт `.venv` без предварительной установки Python. Приложение поддерживает Python 3.10–3.13. Для TorchCodec 0.7 используйте **разделяемые библиотеки FFmpeg 7**; одного FFmpeg 8/9 недостаточно. См. [проверенную сборку Windows](../docs/pages/docs/start.en-US.md#ffmpeg-runtime).
+1. Скачайте **Source code (zip)** из [последнего выпуска](https://github.com/Huanshere/VideoLingo/releases/latest), распакуйте архив на рабочий стол или в другую папку и откройте её.
+2. Дважды щёлкните `OneKeyStart.bat` и не закрывайте окно. При первом запуске скрипт автоматически установит uv, Python 3.12, зависимости приложения и FFmpeg. Требуется интернет.
+3. После установки VideoLingo автоматически откроется в браузере. Укажите адрес API, ключ и модель на боковой панели, чтобы начать работу.
 
-1. Клонируйте репозиторий
-
-```bash
-git clone https://github.com/Huanshere/VideoLingo.git
-cd VideoLingo
-```
-
-2. Создайте среду и установите зависимости
+### Установка из исходного кода (Windows, macOS, Linux)
 
 ```bash
-uv run --no-project --python 3.13 setup_env.py
+git clone https://github.com/Huanshere/VideoLingo.git && cd VideoLingo
+uv run start.py
 ```
 
-3. Запустите приложение
+Позже запускайте `uv run start.py` из папки VideoLingo. Apple Silicon использует MLX; Mac с Intel — CPU для распознавания. По умолчанию дубляж на Intel Mac использует новый голос без исходного фонового звука.
 
-```bash
-.venv\Scripts\streamlit run st.py        # Windows
-.venv/bin/streamlit run st.py            # macOS / Linux
-```
+#### Docker (необязательно)
 
-Или запустите `OneKeyStart.bat` в Windows. Он сначала выбирает существующую `~/.venvs/videolingo`, затем `.venv` проекта. Откройте `http://localhost:8501` и укажите URL API, ключ и модель на боковой панели.
-
-### Docker
-Для контейнера NVIDIA в Linux нужны Docker, совместимый драйвер и [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html). Образ использует ту же установку Python 3.13 и зависимости приложения, по умолчанию CUDA 12.8.1/cu128. Вариант CUDA 12.6 и сохранение данных описаны в [документации Docker](/docs/pages/docs/docker.en-US.md).
+Для контейнера NVIDIA в Linux нужны Docker, совместимый драйвер и [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html). Образ использует ту же установку Python 3.12 и зависимости приложения, по умолчанию CUDA 12.8.1/cu128. Вариант CUDA 12.6 и сохранение данных описаны в [документации Docker](/docs/pages/docs/docker.en-US.md).
 
 ```bash
 docker build -t videolingo .
@@ -129,8 +114,8 @@ docker run -d -p 8501:8501 --gpus all videolingo
 ## API
 VideoLingo поддерживает формат API, подобный OpenAI, и различные интерфейсы TTS:
 - LLM: выберите провайдера OpenAI-совместимого Chat Completions и модель, способную возвращать нужный структурированный JSON. URL API, ключ и модель задаются на боковой панели.
-- Распознавание речи: локальный WhisperX или API ElevenLabs.
-- TTS: Azure, OpenAI, Fish TTS, SiliconFlow Fish/CosyVoice2, GPT-SoVITS, Edge TTS, F5-TTS и собственный адаптер в `core/tts_backend/custom_tts.py`.
+- Распознавание речи: локальный Qwen3-ASR + ForcedAligner (по умолчанию), ElevenLabs или MAI-Transcribe-2. Для MAI можно использовать ключ Azure Speech или OpenRouter (вводится на боковой панели); аудио отправляется выбранному провайдеру и может тарифицироваться. Установщик не ставит WhisperX; чтобы использовать его как бэкенд, см. [WhisperX (ручная установка)](../docs/pages/docs/whisperx-manual.en-US.md).
+- TTS: OpenAI, Fish Audio, SiliconFlow Fish/CosyVoice2, GPT-SoVITS, Edge TTS, F5-TTS и собственный адаптер в `core/tts_backend/custom_tts.py`.
 
 Для подробных инструкций по установке, настройке API и пакетному режиму обратитесь к документации: [English](/docs/pages/docs/start.en-US.md) | [中文](/docs/pages/docs/start.zh-CN.md)
 
@@ -142,7 +127,7 @@ VideoLingo поддерживает формат API, подобный OpenAI, �
 
 3. Качество и тайминг озвучивания зависят от перевода, сервиса TTS и темпа речи. Изменение скорости не гарантирует естественности и идеальной синхронизации.
 
-4. Локальный WhisperX использует один язык распознавания и выравнивания на сегмент. Для смешанной речи точный текст и время на всех языках не гарантируются.
+4. Локальное распознавание использует один основной язык распознавания и выравнивания на аудиосегмент. Для смешанной речи точный текст и время на всех языках не гарантируются.
 
 5. Озвучивание не назначает автоматически отдельный голос каждому говорящему.
 
@@ -150,7 +135,7 @@ VideoLingo поддерживает формат API, подобный OpenAI, �
 
 Проект распространяется по лицензии Apache 2.0. Благодарим проекты:
 
-[whisperX](https://github.com/m-bain/whisperX), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [json_repair](https://github.com/mangiucugna/json_repair), [BELLE](https://github.com/LianjiaTech/BELLE)
+[Qwen3-ASR](https://github.com/Qwen/Qwen3-ASR), [MLX Audio](https://github.com/Blaizzy/mlx-audio), [whisperX](https://github.com/m-bain/whisperX), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [json_repair](https://github.com/mangiucugna/json_repair), [BELLE](https://github.com/LianjiaTech/BELLE)
 
 ## Контакты
 

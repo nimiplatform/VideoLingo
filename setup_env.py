@@ -2,7 +2,7 @@
 
 Default behavior creates a project-local ``.venv``. Use ``--shared`` to create
 or reuse ``~/.venvs/videolingo`` so multiple VideoLingo checkouts share the same
-heavy dependencies (PyTorch, WhisperX, Demucs, etc.).
+heavy dependencies (PyTorch, Qwen3-ASR, Demucs, etc.).
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 
-PYTHON_VERSION = "3.13"
+PYTHON_VERSION = "3.12"
 SCRIPT_DIR = Path(__file__).resolve().parent
 LOCAL_VENV = SCRIPT_DIR / ".venv"
 SHARED_VENV = Path.home() / ".venvs" / "videolingo"
@@ -135,6 +135,8 @@ def run_installer(python_exe: Path, args: argparse.Namespace) -> None:
         cmd.append("--skip-demucs")
     if args.require_demucs:
         cmd.append("--require-demucs")
+    if args.launch:
+        cmd.append("--launch")
     run(cmd, cwd=SCRIPT_DIR, env=env)
 
 
@@ -145,9 +147,10 @@ def build_parser() -> argparse.ArgumentParser:
                         help="PyTorch build selection passed to installer.py")
     parser.add_argument("--path", help="custom venv path; implies --shared-style external venv")
     parser.add_argument("--skip-install", action="store_true", help="only create/reuse the venv")
-    parser.add_argument("--auto-mirror", action="store_true", help="auto-select a PyPI mirror before install")
+    parser.add_argument("--auto-mirror", action="store_true", help="use the fastest PyPI mirror for this install only")
     parser.add_argument("--skip-demucs", action="store_true", help="skip optional Demucs install")
     parser.add_argument("--require-demucs", action="store_true", help="fail if Demucs cannot be installed")
+    parser.add_argument("--launch", action="store_true", help="start VideoLingo after installation")
     parser.add_argument("--force", action="store_true", help="force reinstall staged packages")
     parser.add_argument("--upgrade", action="store_true", help="refresh dependencies within compatibility bounds")
     parser.add_argument("--yes", action="store_true", help="non-interactive; recreate wrong-version venvs")
@@ -177,11 +180,10 @@ def main() -> None:
     print("\n" + "=" * 60)
     print("  Setup complete")
     print("=" * 60)
-    if platform.system() == "Windows":
-        print("  Start with: OneKeyStart.bat")
+    if target in (LOCAL_VENV, SHARED_VENV):
+        print("  Start with: uv run start.py")
     else:
-        streamlit = venv_bin(target) / "streamlit"
-        print(f"  Start with: {streamlit} run st.py")
+        print(f"  Start with: {python_exe} -m streamlit run st.py")
 
 
 if __name__ == "__main__":

@@ -6,6 +6,9 @@ for stream in (sys.stdout, sys.stderr):
     if hasattr(stream, "reconfigure"):
         stream.reconfigure(encoding="utf-8", errors="replace")
 
+from runtime_libraries import configure_ffmpeg
+configure_ffmpeg()
+
 import streamlit as st
 from translations.translations import DISPLAY_LANGUAGES, init_display_language
 from core.st_utils.nimi_workspace import render_nimi_workspace

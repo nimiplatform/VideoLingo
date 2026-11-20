@@ -1,6 +1,10 @@
 import os
 import warnings
 import time
+from runtime_libraries import configure_ffmpeg_dlls
+
+configure_ffmpeg_dlls()
+
 import torch
 import functools
 from pathlib import Path
@@ -101,6 +105,10 @@ def transcribe_audio(raw_audio_file, vocal_audio_file, start, end):
             model_name = str(local_model.resolve())
     else:
         model_name = load_key("whisper.model")
+        if "turbo" in str(model_name).lower():
+            # turbo loops on repeated words in this pipeline, so it is rewritten.
+            rprint("[yellow]large-v3-turbo repeats itself in this pipeline; using large-v3 instead.[/yellow]")
+            model_name = "large-v3"
     model_name = resolve_whisper_model(model_name, MODEL_DIR)
 
     vad_options = {"vad_onset": 0.500,"vad_offset": 0.363}

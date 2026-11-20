@@ -1,3 +1,5 @@
+from core.task_runner import StopTask
+
 import functools
 import time
 import os
@@ -16,7 +18,7 @@ def except_handler(error_msg, retry=0, delay=1, default_return=None):
             for i in range(retry + 1):
                 try:
                     return func(*args, **kwargs)
-                except NimiRequestError:
+                except (StopTask, NimiRequestError):
                     # The Host owns cancellation and reports the actual Nimi failure.
                     raise
                 except Exception as e:

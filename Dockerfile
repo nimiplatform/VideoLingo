@@ -5,9 +5,9 @@ ARG CUDA_VERSION
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
-# System Python only bootstraps setup_env.py; the application uses its Python 3.13 venv.
+# System Python only bootstraps setup_env.py; the application uses its Python 3.12 venv.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 curl ca-certificates git build-essential ffmpeg fonts-noto-cjk fontconfig libgl1 libglib2.0-0 \
+    python3 curl ca-certificates git build-essential fonts-noto-cjk fontconfig libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Build the checked-out source, not a different revision cloned during the build.
@@ -25,6 +25,10 @@ RUN case "$CUDA_VERSION" in \
 
 ENV PATH="/opt/videolingo/bin:${PATH}"
 ENV PYTHONUTF8=1
+
+# The Chinese and Japanese subtitle faces (about 30 MB): a container loses what it downloads into
+# fonts/ when it is recreated. Not fatal: without a network here they are downloaded on first use.
+RUN python -c "from core.utils import subtitle_fonts as f; [f.fetch(family) for family in f.DOWNLOADS]" || true
 
 EXPOSE 8501
 

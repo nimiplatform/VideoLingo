@@ -1,9 +1,15 @@
-import os
+import ipaddress
 import json
+import os
+import re
 from threading import Lock
+from urllib.parse import urlparse
+
+import json_repair
+from rich import print as rprint
+
 from core.nimi_bridge import NimiRequestError, request_model
 from core.utils.config_utils import load_key
-from rich import print as rprint
 from core.utils.decorator import except_handler
 
 # ------------
@@ -12,6 +18,7 @@ from core.utils.decorator import except_handler
 
 LOCK = Lock()
 GPT_LOG_FOLDER = 'output/gpt_log'
+
 
 def _save_cache(model, prompt, resp_content, resp_type, resp, message=None, log_title="default", failure=None, request_context=None):
     with LOCK:
@@ -39,6 +46,7 @@ def _checkpoint_cache(step):
     if enabled:
         request_model('checkpoint', {'stage': 'model-cache', 'step': step})
 
+
 def _load_cache(model, prompt, resp_type, log_title):
     with LOCK:
         file = os.path.join(GPT_LOG_FOLDER, f"{log_title}.json")
@@ -49,13 +57,69 @@ def _load_cache(model, prompt, resp_type, log_title):
                         return item["resp"]
         return False
 
+
 # ------------
-# ask gpt once
+# standalone upstream URL/JSON helpers (preserved for upstream unit tests;
+# Nimi runtime execution routes through request_model below)
+# ------------
+
+LOCAL_API_KEY = "not-needed"
+
+
+def is_local_endpoint(base_url):
+    """Ollama, LM Studio, vLLM... on this machine or the private network need no API key."""
+    host = (urlparse(base_url if "//" in str(base_url) else f"//{base_url}").hostname or "").lower()
+    if host in ("localhost", "host.docker.internal") or host.endswith((".local", ".localhost")):
+        return True
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return address.is_loopback or address.is_private or address.is_unspecified
+
+
+def get_api_key():
+    key = load_key("api.key")
+    if key:
+        return key
+    if is_local_endpoint(load_key("api.base_url")):
+        return LOCAL_API_KEY
+    raise ValueError("API key is not set")
+
+
+def normalize_base_url(base_url):
+    """Accept the forms people paste: with or without /v1, or the full chat completions URL."""
+    base_url = str(base_url or "").strip()
+    if 'ark' in base_url:
+        return "https://ark.cn-beijing.volces.com/api/v3"
+    base_url = re.sub(r'/chat/completions/?$', '', base_url.rstrip('/'))
+    if 'v1' not in base_url and not re.search(r'/v\d+$', base_url):
+        base_url = base_url.strip('/') + '/v1'
+    return base_url
+
+
+def parse_json_response(resp_content):
+    """Read the JSON object of a reply that may carry reasoning or prose around it."""
+    text = re.sub(r'<think>.*?</think>', '', resp_content or '', flags=re.DOTALL | re.IGNORECASE)
+    text = re.split(r'</think>', text, flags=re.IGNORECASE)[-1]
+    text = re.sub(r'<think>.*', '', text, flags=re.DOTALL | re.IGNORECASE)
+    blocks = re.findall(r'```(?:json)?[ \t]*\n(.*?)```', text, flags=re.DOTALL | re.IGNORECASE)
+    candidates = [block for block in reversed(blocks) if '{' in block] + [text]
+    for candidate in candidates:
+        resp = json_repair.loads(candidate)
+        if isinstance(resp, list):
+            resp = next((item for item in reversed(resp) if isinstance(item, dict)), resp)
+        if isinstance(resp, dict) and resp:
+            return resp
+    raise ValueError(f"❎ API response is not a JSON object: {str(resp_content)[:200]!r}")
+
+
+# ------------
+# ask gpt once (Nimi-backed)
 # ------------
 
 @except_handler("GPT request failed", retry=5)
 def ask_gpt(prompt, resp_type=None, valid_def=None, log_title="default", request_context=None):
-    # check cache
     model = load_key("nimi_text_cache_key")
     cached = _load_cache(model, prompt, resp_type, log_title)
     if cached:
@@ -89,8 +153,7 @@ def ask_gpt(prompt, resp_type=None, valid_def=None, log_title="default", request
             raise NimiRequestError({"message": "Nimi JSON-object output must be an object", "reasonCode": "AI_OUTPUT_INVALID", "retryable": False})
     else:
         resp = resp_content
-    
-    # check if the response format is valid
+
     if valid_def:
         valid_resp = valid_def(resp)
         if valid_resp['status'] != 'success':
@@ -101,10 +164,3 @@ def ask_gpt(prompt, resp_type=None, valid_def=None, log_title="default", request
     _save_cache(model, prompt, resp_content, resp_type, resp, log_title=log_title, request_context=request_context)
     _checkpoint_cache(log_title)
     return resp
-
-
-if __name__ == '__main__':
-    from rich import print as rprint
-    
-    result = ask_gpt("""test respond ```json\n{\"code\": 200, \"message\": \"success\"}\n```""", resp_type="json")
-    rprint(f"Test json output result: {result}")

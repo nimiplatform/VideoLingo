@@ -17,7 +17,7 @@ VideoLingo 在 Streamlit 介面中整合語音辨識、字幕翻譯、分句和�
 主要功能：
 - 🎥 通過 yt-dlp 下載 YouTube 影片
 
-- 使用 WhisperX 進行詞級語音辨識與時間對齊
+- 使用 Qwen3-ASR + Qwen3-ForcedAligner 進行詞級語音辨識與時間對齊
 
 - **📝 基於 NLP 和 AI 的字幕分段**
 
@@ -27,7 +27,7 @@ VideoLingo 在 Streamlit 介面中整合語音辨識、字幕翻譯、分句和�
 
 - 按可設定的長度限制切分字幕
 
-- **🗣️ 使用 GPT-SoVITS、Azure、OpenAI 等進行配音**
+- **🗣️ 使用 GPT-SoVITS、OpenAI、Edge TTS 等進行配音**
 
 - 🚀 在 Streamlit 中一鍵啟動和處理
 
@@ -73,53 +73,38 @@ https://github.com/user-attachments/assets/47d965b2-b4ab-4a0b-9d08-b49a7bf3508c
 
 **輸入語言支持（更多語言即將推出）：**
 
-🇺🇸 英語 🤩 | 🇷🇺 俄語 😊 | 🇫🇷 法語 🤩 | 🇩🇪 德語 🤩 | 🇮🇹 義大利語 🤩 | 🇪🇸 西班牙語 🤩 | 🇯🇵 日語 😐 | 🇨🇳 中文* 😊
+🇺🇸 英語 🤩 | 🇷🇺 俄語 😊 | 🇫🇷 法語 🤩 | 🇩🇪 德語 🤩 | 🇮🇹 義大利語 🤩 | 🇪🇸 西班牙語 🤩 | 🇯🇵 日語 😊 | 🇨🇳 中文 🤩
 
-> *本地辨識中文時，請明確選擇中文，以使用帶標點增強的 Belle Whisper 模型。
-
-翻譯語言取決於所選 LLM，配音語言取決於所選 TTS。
+配音語言取決於所選 TTS。
 
 ## 安裝
 
-遇到任何問題？在[**這裡**](https://share.fastgpt.in/chat/share?shareId=066w11n3r9aq6879r4z0v9rh)與我們的免費在線 AI 助手聊天以獲取幫助。
+VideoLingo 支援 Windows、macOS（Apple Silicon / Intel）和 Linux。
 
-先安裝 [Git](https://git-scm.com/downloads)、[uv](https://docs.astral.sh/uv/getting-started/installation/) 和 [FFmpeg](https://ffmpeg.org/download.html)。安裝後重新開啟終端，檢查 `git --version`、`uv --version` 和 `ffmpeg -version`。
+### 讓本機 AI Agent 幫你安裝 🤖
 
-使用 NVIDIA 加速時，需要安裝與顯卡相容的驅動。主機安裝器依據 `nvidia-smi` 報告的 CUDA 支援版本選擇 PyTorch：>=12.8 使用 `cu128`，否則使用 `cu126`；沒有 NVIDIA 時使用 CPU 套件。這是在選擇 Python 套件，不會自動安裝系統 CUDA Toolkit。本地 WhisperX 的 GPU 辨識還需要程序能找到 CUDA 12 cuBLAS 和 cuDNN 9 函式庫，詳見 [GPU 執行庫要求](../docs/pages/docs/start.zh-CN.md#gpu-runtime)。
+如果你的 AI Agent 可以操作這台電腦，直接告訴它：
 
-> **注意：** 需要安裝 FFmpeg。請通過包管理器安裝：
-> - Windows：從 [FFmpeg 下載頁](https://ffmpeg.org/download.html)列出的 Windows 建置中選擇**共享函式庫版**，將其 `bin` 目錄加入 PATH。
-> - macOS：```brew install ffmpeg```（通過 [Homebrew](https://brew.sh/)）
-> - Linux：```sudo apt install ffmpeg```（Debian/Ubuntu）
+> `幫我安裝 GitHub 上的 Huanshere/VideoLingo，並啟動它。`
 
-### 使用 uv 安裝
+### Windows 一鍵安裝 🎉
 
-uv 自動下載 Python 3.13 並建立隔離的 `.venv`，以下命令不需要預裝 Python。應用程式支援 Python 3.10–3.13。固定的 TorchCodec 0.7 請搭配 **FFmpeg 7 共享函式庫**，僅有 FFmpeg 8/9 並不相容。見[已驗證的 Windows 建置](../docs/pages/docs/start.zh-CN.md#ffmpeg-runtime)。
+1. 從[最新版本頁面](https://github.com/Huanshere/VideoLingo/releases/latest)下載 **Source code (zip)**，解壓縮到桌面等方便找到的位置，並開啟資料夾。
+2. 雙擊 `OneKeyStart.bat`，保持視窗開啟。首次執行會自動安裝 uv、Python 3.12、應用程式依賴和 FFmpeg，需要連網。
+3. 安裝完成後，VideoLingo 會自動在瀏覽器中開啟。在側邊欄填入 API 網址、金鑰和模型，就可以開始使用了。
 
-1. 複製倉庫
-
-```bash
-git clone https://github.com/Huanshere/VideoLingo.git
-cd VideoLingo
-```
-
-2. 建立環境並安裝依賴
+### 從原始碼安裝（Windows、macOS、Linux）
 
 ```bash
-uv run --no-project --python 3.13 setup_env.py
+git clone https://github.com/Huanshere/VideoLingo.git && cd VideoLingo
+uv run start.py
 ```
 
-3. 啟動應用
+之後在 VideoLingo 資料夾執行 `uv run start.py` 即可啟動。Apple Silicon 自動使用 MLX，Intel Mac 使用 CPU 辨識。Intel Mac 預設配音只保留新產生的語音，不保留原影片的背景音。
 
-```bash
-.venv\Scripts\streamlit run st.py        # Windows
-.venv/bin/streamlit run st.py            # macOS / Linux
-```
+#### Docker（可選）
 
-或在 Windows 上雙擊 `OneKeyStart.bat`。它優先使用既有的 `~/.venvs/videolingo`，其次使用專案 `.venv`。開啟 `http://localhost:8501`，在側欄填寫 API 網址、金鑰和模型。
-
-### Docker
-在 Linux 上部署 NVIDIA GPU 容器，需要 Docker、相容的顯卡驅動和 [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)。映像檔使用相同的 Python 3.13 安裝流程和應用程式依賴，預設 CUDA 12.8.1/cu128。相容的 CUDA 12.6 方案及資料持久化設定見 [Docker 文件](/docs/pages/docs/docker.zh-CN.md)。
+在 Linux 上部署 NVIDIA GPU 容器，需要 Docker、相容的顯卡驅動和 [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)。映像檔使用相同的 Python 3.12 安裝流程和應用程式依賴，預設 CUDA 12.8.1/cu128。相容的 CUDA 12.6 方案及資料持久化設定見 [Docker 文件](/docs/pages/docs/docker.zh-CN.md)。
 
 ```bash
 docker build -t videolingo .
@@ -128,9 +113,9 @@ docker run -d -p 8501:8501 --gpus all videolingo
 
 ## APIs
 VideoLingo 支持 OpenAI 格式的 API 和各種 TTS 接口：
-- LLM：自行選擇相容 OpenAI Chat Completions、能回傳流程所需結構化 JSON 的服務與模型，在側欄設定 API 網址、金鑰和模型。
-- 語音辨識：本地執行 WhisperX 或使用 ElevenLabs API。
-- TTS：Azure、OpenAI、Fish TTS、SiliconFlow Fish/CosyVoice2、GPT-SoVITS、Edge TTS、F5-TTS，以及 `core/tts_backend/custom_tts.py` 中的自訂適配器。
+- LLM：自行選擇相容 OpenAI Chat Completions、能回傳流程所需結構化 JSON 的服務與模型。推薦 [OpenLux](https://www.openlux.ai/register?aff=wKYu) 中轉，API 網址填 `https://api.openlux.ai/v1`。預設性價比高用 GPT-6 Luna，模型 ID 填 `gpt-6-luna`；品質更好用 GPT-6 Sol，模型 ID 填 `gpt-6-sol`；品質最好用 Claude Opus 5.5，模型 ID 填 `claude-opus-5-5`。OpenLux 中轉約價見安裝文件。在側欄設定 API 網址、金鑰和模型。
+- 語音辨識：本地執行 Qwen3-ASR + ForcedAligner（預設），或在側欄選用 ElevenLabs、MAI-Transcribe-2。MAI 可使用 Azure Speech 金鑰或 OpenRouter 金鑰（在側欄填寫）；音訊會傳送至選定的服務商，可能產生費用。安裝器不會安裝 WhisperX；若要把它當作後端，見 [WhisperX（手動安裝）](../docs/pages/docs/whisperx-manual.zh-CN.md)。
+- TTS：OpenAI、Fish Audio、SiliconFlow Fish/CosyVoice2、GPT-SoVITS、Edge TTS、F5-TTS，以及 `core/tts_backend/custom_tts.py` 中的自訂適配器。
 
 詳細安裝、API 配置和批處理模式說明，請參閱文檔：[English](/docs/pages/docs/start.en-US.md) | [中文](/docs/pages/docs/start.zh-CN.md)
 
@@ -142,7 +127,7 @@ VideoLingo 支持 OpenAI 格式的 API 和各種 TTS 接口：
 
 3. 配音品質和時間匹配取決於翻譯、TTS 服務及語速，變速處理不能保證表達自然或完全同步。
 
-4. 本地 WhisperX 每個片段使用一種辨識和對齊語言，混合語言語音不保證每種語言的文字和時間都準確。
+4. 本地辨識在每個音訊片段中使用一種主要辨識和對齊語言，混合語言語音不保證每種語言的文字和時間都準確。
 
 5. 配音流程不會自動為每個說話人分配不同的聲音。
 
@@ -150,7 +135,7 @@ VideoLingo 支持 OpenAI 格式的 API 和各種 TTS 接口：
 
 本項目採用 Apache 2.0 許可證。特別感謝以下開源項目的貢獻：
 
-[whisperX](https://github.com/m-bain/whisperX)、[yt-dlp](https://github.com/yt-dlp/yt-dlp)、[json_repair](https://github.com/mangiucugna/json_repair)、[BELLE](https://github.com/LianjiaTech/BELLE)
+[Qwen3-ASR](https://github.com/Qwen/Qwen3-ASR)、[MLX Audio](https://github.com/Blaizzy/mlx-audio)、[whisperX](https://github.com/m-bain/whisperX)、[yt-dlp](https://github.com/yt-dlp/yt-dlp)、[json_repair](https://github.com/mangiucugna/json_repair)、[BELLE](https://github.com/LianjiaTech/BELLE)
 
 ## 📬 聯繫我
 

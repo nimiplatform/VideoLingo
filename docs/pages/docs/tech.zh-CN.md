@@ -1,8 +1,8 @@
 ## Videolingo 视频翻译系统技术文档
 
-Videolingo 是一个高度集成的视频翻译系统，能够自动执行一系列复杂的操作，包括视频下载、音频提取、语音识别、文本处理、翻译、字幕生成、文本到语音合成以及音视频合成。该系统利用 AI 技术（ASR、NLP、LLMs、TTS），并提供用于批量处理的命令行界面和使用 Streamlit 的交互式 Web 界面，用于任务管理和系统配置。
+Videolingo 是一个高度集成的视频翻译系统，能够自动执行一系列复杂的操作，包括视频下载、音频提取、语音识别、文本处理、翻译、字幕生成、文本到语音合成以及音视频合成。该系统利用 AI 技术（ASR、NLP、LLMs、TTS），并提供用于串行自动化的本地 HTTP API和使用 Streamlit 的交互式 Web 界面，用于任务管理和系统配置。
 
-该项目已经过重大重构，形成了一个更加模块化和健壮的结构。核心功能现在组织成不同的包和模块，主要位于 `core` 目录及其子目录（`asr_backend`、`spacy_utils`、`st_utils`、`tts_backend`、`utils`）中，以及一个专门的 `batch` 目录用于批量处理实用程序，以及一个 `translations` 目录用于国际化。
+该项目已经过重大重构，形成了一个更加模块化和健壮的结构。核心功能现在组织成不同的包和模块，主要位于 `core` 目录及其子目录（`asr_backend`、`spacy_utils`、`st_utils`、`tts_backend`、`utils`）中，以及用于 HTTP 自动化的 `api.py` 和用于国际化的 `translations` 目录。
 
 对于开发人员来说，`core` 目录中的许多组件（尤其是编号为 `_X_*.py` 的文件）代表处理管道中的不同步骤，并且可以单独执行以进行调试。中间输出和最终输出通常存储在 `output` 目录中，并具有清理和归档到 `history` 目录的机制。
 
@@ -21,9 +21,10 @@ Videolingo 是一个高度集成的视频翻译系统，能够自动执行一系
 
 *   `core/asr_backend/demucs_vl.py`: 使用 Demucs 模型 (`htdemucs`) 将音频分离为人声和背景音轨，从而提高后续 ASR 的质量。
 *   `core/asr_backend/audio_preprocess.py`: 包含准备音频的基本功能：音量标准化 (`pydub`)、视频到音频的转换 (`ffmpeg`)、静音检测 (`ffmpeg`)、音频时长计算 (`ffmpeg`)、将长音频文件拆分为可管理的片段、将 ASR 结果处理为 DataFrames、保存结果以及存储检测到的语言。
-*   `core/asr_backend/whisperX_local.py`: 使用 WhisperX 库实现本地音频转录。根据可用硬件（GPU/CPU）优化性能，处理模型下载（具有镜像检查），执行转录和对齐，调整时间戳，并管理 GPU 内存。
+*   `core/asr_backend/qwen_asr_local.py`: 默认的本地 ASR。用 Qwen3-ASR（1.7B/0.6B）转写原始音频，再用 Qwen3-ForcedAligner-0.6B 把文本对齐到人声音轨；音频按不超过 180 秒、在低能量处切分的窗口处理。Apple Silicon 上使用 MLX（mlx-audio，8bit），其他平台使用官方 qwen-asr 的 transformers 后端；把对齐时去掉的标点贴回词上，输出与 WhisperX 相同的 segment/word 结构。
+*   `core/asr_backend/whisperX_local.py`: 手动安装的后端（`whisper.backend: whisperx`）。安装器不会安装它，见 [WhisperX（手动安装）](whisperx-manual.zh-CN.md)。使用 WhisperX 库实现本地音频转录。根据可用硬件（GPU/CPU）优化性能，处理模型下载（具有镜像检查），执行转录和对齐，调整时间戳，并管理 GPU 内存。
 *   `core/asr_backend/elevenlabs_asr.py`: 使用 ElevenLabs 语音转文本 API 实现音频转录，处理音频切片、API 交互、格式转换（ElevenLabs 到类似 Whisper 的格式）和临时文件管理。
-*   `core/_2_asr.py`: Orchestrates audio preparation, optional vocal separation, recognition with local WhisperX or ElevenLabs, and result export.
+*   `core/_2_asr.py`: 统筹音频准备、可选的人声分离、识别（本地 Qwen3-ASR（默认）、自行安装的 WhisperX 或 ElevenLabs）、按内容寻址的识别结果缓存以及结果导出。
 
 **4. 文本处理和翻译模块 (`core`, `core/spacy_utils`):**
 
@@ -52,14 +53,13 @@ Videolingo 是一个高度集成的视频翻译系统，能够自动执行一系
 *   `core/_8_2_dub_chunks.py`: 分析音频任务文件，计算时间间隙和语速，根据速度和停顿确定配音块的最佳切断点，必要时合并行，匹配字幕，并更新任务文件。
 *   `core/_9_refer_audio.py`: 基于音频任务文件中定义的时间戳，从源人声音轨中提取特定的音频片段，创建某些 TTS 引擎（如 GPT-SoVITS、F5-TTS、FishTTS）使用的参考音频文件。
 *   **TTS 后端 (`core/tts_backend`):**
-    *   `core/tts_backend/azure_tts.py`: Azure 文本转语音 API 的接口。
     *   `core/tts_backend/custom_tts.py`: 用于集成自定义 TTS 引擎的占位符/模板。
     *   `core/tts_backend/edge_tts.py`: 使用 `edge-tts` 命令行工具的 Microsoft Edge TTS 的接口。
-    *   `core/tts_backend/fish_tts.py`: 302.ai Fish TTS API 的接口。
     *   `core/tts_backend/gpt_sovits_tts.py`: 本地 GPT-SoVITS 服务器的接口，包括服务器启动逻辑。
     *   `core/tts_backend/openai_tts.py`: OpenAI 文本转语音 API 的接口。
     *   `core/tts_backend/sf_cosyvoice2.py`: SiliconFlow CosyVoice2 TTS API 的接口，支持参考音频。
     *   `core/tts_backend/sf_fishtts.py`: SiliconFlow Fish TTS API 的接口，支持具有参考音频的预设、自定义和动态语音模式。
+    *   `core/tts_backend/fish_audio_tts.py`: Fish Audio 官方 API 的接口，用一段参考克隆视频里的声音，或按 ID 使用固定音色。
     *   `core/tts_backend/_302_f5tts.py`: 302.ai F5-TTS API 的接口，使用参考音频进行语音克隆。
     *   `core/tts_backend/estimate_duration.py`: 提供根据特定语言的音节计数和标点符号停顿来估计文本的说话时长的函数。用于音频任务生成和字幕修剪。
     *   `core/tts_backend/tts_main.py`: 中央 TTS 调度器。清理输入文本，根据配置 (`load_key("tts_method")`) 选择适当的 TTS 后端，调用相应的 TTS 函数，使用重试和基于 GPT 的文本纠正来处理错误，验证音频时长，并保存输出 WAV 文件。
@@ -75,16 +75,16 @@ Videolingo 是一个高度集成的视频翻译系统，能够自动执行一系
 *   `core/utils/decorator.py`: 定义可重用的装饰器：`except_handler` 用于向函数添加重试逻辑和错误报告，`check_file_exists` 用于如果输出文件已存在则跳过函数执行。 使用 `rich` 进行格式化的输出。
 *   `core/utils/delete_retry_dubbing.py`: 提供一个函数 (`delete_dubbing_files`) 来清理与配音过程相关的特定中间文件和目录（例如，`dub.wav`、`output_dub.mp4`、`output/audio/segs`）。
 *   `core/utils/onekeycleanup.py`: 实现 `cleanup` 函数，用于将文件从 `output` 目录组织和归档到基于视频名称的结构化的 `history` 目录中。包括文件名清理和强大的文件移动/删除逻辑。
-*   `core/utils/pypi_autochoose.py`: 用于自动测试和选择最快的 PyPI 镜像并配置 pip 以使用它的实用程序。 使用 `rich` 进行 UI。
+*   `core/utils/pypi_autochoose.py`: 测试各 PyPI 镜像并返回最快的一个。`installer.py --auto-mirror` 只在本次安装中使用它，不修改 pip 的配置。使用 `rich` 进行 UI。
 *   `core/utils/models.py`: 定义表示整个管道中使用的各种中间文件和输出文件的文件路径的常量。
 *   `core/__init__.py`, `core/asr_backend/__init__.py`, `core/spacy_utils/__init__.py`, `core/st_utils/__init__.py`, `core/tts_backend/__init__.py`: 包初始化文件，定义其各自包/子包的公共接口 (`__all__`)。
 *   `core/__init__.py`: 初始化主 `core` 包，从子包导出关键函数和模块，以便更轻松地访问。
 
-**8. 批量处理模块 (`batch`):**
+**8. 共用流程和 HTTP API：**
 
-*   `batch/utils/settings_check.py`: 根据 `batch/input` 中的视频文件验证 `batch/tasks_setting.xlsx` 中定义的设置，检查文件是否存在、有效的 URL 和正确的配置值（例如，配音标志）。使用 `rich` 进行输出。
-*   `batch/utils/video_processor.py`: 定义 `process_video` 函数，该函数编排批处理作业中*单个*视频的处理管道。 处理输入（URL 或本地文件），调用核心处理步骤（转录、翻译、字幕、可选配音），并进行重试，管理输出文件夹，并调用 `cleanup`。
-*   `batch/utils/batch_processor.py`: 批量处理的主协调器。从 `batch/tasks_setting.xlsx` 读取任务（使用 `pandas`），迭代任务，验证设置 (`settings_check.py`)，管理语言配置更改，为每个视频调用 `video_processor.py`，处理错误并重试（包括从 ERROR 文件夹恢复文件），并更新 Excel 文件中的状态。 使用 `rich` 进行控制台输出。
+* `core/pipeline.py`：Streamlit 与 API 共用的字幕和配音步骤。
+* `core/task_runner.py`：串行后台执行、进度、暂停与协作式停止。
+* `api.py`：提供输入、运行、状态、停止、文件和归档接口。保留 `config.yaml`、`output/` 和 `history/`，替代 Excel 批处理。
 
 **9. Streamlit 界面模块 (`core/st_utils`, `st.py`):**
 

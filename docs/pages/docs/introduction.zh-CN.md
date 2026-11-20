@@ -9,7 +9,7 @@ VideoLingo 是一站式视频翻译本地化配音工具，能够一键生成 Ne
 主要特点和功能：
 - 🎥 使用 yt-dlp 从 Youtube 链接下载视频
 
-- **🎙️ 使用 WhisperX 进行单词级时间轴字幕识别**
+- **🎙️ 使用 Qwen3-ASR + ForcedAligner 进行单词级时间轴字幕识别**
 
 - **📝 使用 NLP 和 GPT 根据句意进行字幕分割**
 
@@ -54,36 +54,37 @@ https://github.com/user-attachments/assets/47d965b2-b4ab-4a0b-9d08-b49a7bf3508c
 
 🇺🇸 英语 🤩  |  🇷🇺 俄语 😊  |  🇫🇷 法语 🤩  |  🇩🇪 德语 🤩  |  🇮🇹 意大利语 🤩  |  🇪🇸 西班牙语 🤩  |  🇯🇵 日语 😐  |  🇨🇳 中文* 😊
 
-> *中文使用单独的标点增强后的 whisper 模型
+> *本地识别使用 Qwen3-ASR（默认 1.7B，可选 0.6B）。
 
 **翻译语言支持所有语言，配音语言取决于选取的TTS。**
 
 ## 安装
 
-先安装 [Git](https://git-scm.com/downloads)、[uv](https://docs.astral.sh/uv/getting-started/installation/) 和 [FFmpeg](https://ffmpeg.org/download.html)，重开终端并确认可从 PATH 调用。FFmpeg 共享库及 NVIDIA 运行库要求见[安装指南](start.zh-CN.md#gpu-runtime)。
+VideoLingo 支持 Windows、macOS（Apple Silicon / Intel）和 Linux。
 
-1. 克隆仓库
+### 让本地 AI Agent 帮你安装 🤖
+
+如果你的 AI Agent 可以操作这台电脑，直接告诉它：
+
+> `帮我安装 GitHub 上的 Huanshere/VideoLingo，并启动它。`
+
+### Windows：双击安装 🎉
+
+1. 从[最新版本页面](https://github.com/Huanshere/VideoLingo/releases/latest)下载 **Source code (zip)**，解压到桌面等方便找到的位置，并打开文件夹。
+2. 双击 `OneKeyStart.bat`，保持窗口打开。首次运行会自动安装 uv、Python 3.12、应用依赖和 FFmpeg，需要联网。
+3. 安装完成后，VideoLingo 会自动在浏览器中打开。在侧栏填写 API 地址、密钥和模型，就可以开始使用了。
+
+### 从源码安装（Windows、macOS、Linux）
 
 ```bash
-git clone https://github.com/Huanshere/VideoLingo.git
-cd VideoLingo
+git clone https://github.com/Huanshere/VideoLingo.git && cd VideoLingo
+uv run start.py
 ```
 
-2. 创建 Python 3.13 环境并安装依赖
-
-```bash
-uv run --no-project --python 3.13 setup_env.py
-```
-
-3. 启动应用
-
-```bash
-.venv\Scripts\python -m streamlit run st.py  # Windows
-.venv/bin/python -m streamlit run st.py     # macOS / Linux
-```
+以后在 VideoLingo 文件夹中运行 `uv run start.py` 即可启动。
 
 ### Docker
-Linux NVIDIA 容器使用 Docker、兼容驱动和 NVIDIA Container Toolkit。镜像采用相同的 Python 3.13 安装流程，详见 [Docker 文档](/docs/pages/docs/docker.zh-CN.md)：
+Linux NVIDIA 容器使用 Docker、兼容驱动和 NVIDIA Container Toolkit。镜像采用相同的 Python 3.12 安装流程，详见 [Docker 文档](/docs/pages/docs/docker.zh-CN.md)：
 
 ```bash
 docker build -t videolingo .
@@ -93,26 +94,26 @@ docker run -d -p 8501:8501 --gpus all videolingo
 ## API
 本项目支持 OpenAI-Like 格式的 api 和多种配音接口：
 - 自行选择兼容 OpenAI Chat Completions、能返回结构化 JSON 的服务和模型，在侧栏配置 API 地址、密钥和模型。
-- `azure-tts`, `openai-tts`, `siliconflow-fishtts`, `fish-tts`, `GPT-SoVITS`
+- `edge-tts`, `openai-tts`, `siliconflow-fishtts`, `fish-tts`, `GPT-SoVITS`
 
-详细的安装、 API 配置、汉化、批量说明可以参见文档：[English](/docs/pages/docs/start.en-US.md) | [简体中文](/docs/pages/docs/start.zh-CN.md)
+详细的安装、 LLM 配置和使用说明可以参见文档：[English](/docs/pages/docs/start.en-US.md) | [简体中文](/docs/pages/docs/start.zh-CN.md)
 
 ## 当前限制
-1. WhisperX 转录效果可能受到视频背景声影响，因为使用了 wav2vac 模型进行对齐。对于背景音乐较大的视频，请开启人声分离增强。另外，如果字幕以数字或特殊符号结尾，可能会导致提前截断，这是因为 wav2vac 无法将数字字符（如"1"）映射到其发音形式（"one"）。
+1. 转录和词级时间轴可能受到视频背景声影响。对于背景音乐较大的视频，请开启人声分离增强：Qwen3-ASR 仍对原始音频转写，ForcedAligner 用分离出的人声对齐。对齐后的词会按启发式规则贴回标点，少数情况下个别词可能丢失标点。
 
 2. 使用较弱模型时容易在中间过程报错，这是因为对响应的 json 格式要求较为严格。如果出现此错误，请删除 `output` 文件夹后更换 llm 重试，否则重复执行会读取上次错误的响应导致同样错误。
 
 3. 配音功能由于不同语言的语速和语调差异，还受到翻译步骤的影响，可能不能 100% 完美，但本项目做了非常多的语速上的工程处理，尽可能保证配音效果。
 
-4. **多语言视频转录识别仅仅只会保留主要语言**，这是由于 whisperX 在强制对齐单词级字幕时使用的是针对单个语言的特化模型，会因为不认识另一种语言而删去。
+4. **多语言视频转录识别只对主要语言可靠**，对齐时每个音频窗口只使用一种语言，其他语言的文字和时间轴不保证准确。
 
-5. **无法多角色分别配音**，whisperX 的说话人区分效果不够好用。
+5. **无法多角色分别配音**，识别环节不区分说话人。
 
 ## 📄 许可证
 
 本项目采用 Apache 2.0 许可证，衷心感谢以下开源项目的贡献：
 
-[whisperX](https://github.com/m-bain/whisperX), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [json_repair](https://github.com/mangiucugna/json_repair), [BELLE](https://github.com/LianjiaTech/BELLE)
+[Qwen3-ASR](https://github.com/Qwen/Qwen3-ASR), [MLX Audio](https://github.com/Blaizzy/mlx-audio), [whisperX](https://github.com/m-bain/whisperX), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [json_repair](https://github.com/mangiucugna/json_repair), [BELLE](https://github.com/LianjiaTech/BELLE)
 
 ## 📬 联系我们
 

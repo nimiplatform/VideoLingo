@@ -1,31 +1,22 @@
-import platform
-import subprocess
 import json
 import math
+import os
+import subprocess
 
 from rich.console import Console
 
 from core._1_ytdlp import find_video_files
 from core.utils import *
 from core.utils.models import *
+from core.utils.subtitle_style import get_subtitle_filter_candidates
 
 console = Console()
 
 DUB_VIDEO = "output/output_dub.mp4"
 DUB_SUB_FILE = 'output/dub.srt'
+DUB_SRC_SUB_FILE = 'output/dub_src.srt'
 DUB_AUDIO = 'output/dub.mp3'
 
-TRANS_FONT_SIZE = 17
-TRANS_FONT_NAME = 'Arial'
-if platform.system() == 'Linux':
-    TRANS_FONT_NAME = 'NotoSansCJK-Regular'
-if platform.system() == 'Darwin':
-    TRANS_FONT_NAME = 'Arial Unicode MS'
-
-TRANS_FONT_COLOR = '&H00FFFF'
-TRANS_OUTLINE_COLOR = '&H000000'
-TRANS_OUTLINE_WIDTH = 1 
-TRANS_BACK_COLOR = '&H33000000'
 
 def normalize_dub_audio(audio_path, output_path):
     """Measure gated loudness, then apply one peak-limited gain to the whole dub."""
@@ -48,6 +39,7 @@ def normalize_dub_audio(audio_path, output_path):
         check=True, capture_output=True,
     )
 
+
 def merge_video_audio():
     """Merge video and audio, and reduce video volume"""
     from core._1_ytdlp import is_audio_only_input
@@ -57,45 +49,74 @@ def merge_video_audio():
 
     VIDEO_FILE = find_video_files()
     background_file = _BACKGROUND_AUDIO_FILE
-    
+    burn_subtitles = load_key("burn_subtitles")
+
     # Normalize dub audio
     normalized_dub_audio = 'output/normalized_dub.wav'
     normalize_dub_audio(DUB_AUDIO, normalized_dub_audio)
-    
-    # Merge video and audio with translated subtitles
-    probe = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'json', VIDEO_FILE], check=True, capture_output=True, text=True)
-    dimensions = json.loads(probe.stdout)['streams'][0]
-    TARGET_WIDTH, TARGET_HEIGHT = dimensions['width'], dimensions['height']
-    rprint(f"[bold green]Video resolution: {TARGET_WIDTH}x{TARGET_HEIGHT}[/bold green]")
-    
-    subtitle_filter = (
-        f"subtitles={DUB_SUB_FILE}:force_style='FontSize={TRANS_FONT_SIZE},"
-        f"FontName={TRANS_FONT_NAME},PrimaryColour={TRANS_FONT_COLOR},"
-        f"OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
-        f"BackColour={TRANS_BACK_COLOR},Alignment=2,MarginV=27,BorderStyle=4'"
-    )
-    if not load_key('burn_subtitles'):
-        subtitle_filter = 'null'
-    
-    cmd = [
-        'ffmpeg', '-nostdin', '-y', '-i', VIDEO_FILE, '-i', background_file, '-i', normalized_dub_audio,
-        '-filter_complex',
-        f'[0:v]scale={TARGET_WIDTH}:{TARGET_HEIGHT}:force_original_aspect_ratio=decrease,'
-        f'pad={TARGET_WIDTH}:{TARGET_HEIGHT}:(ow-iw)/2:(oh-ih)/2,'
-        f'{subtitle_filter}[v];'
-        f'[1:a][2:a]amix=inputs=2:duration=first:dropout_transition=3[a]'
-    ]
 
+    has_background = os.path.isfile(background_file)
+    cmd = ['ffmpeg', '-nostdin', '-y', '-i', VIDEO_FILE]
+    if has_background:
+        cmd.extend(['-i', background_file])
+    cmd.extend(['-i', normalized_dub_audio])
+
+    video_filters = [None]
+    if burn_subtitles:
+        # Merge video and audio with the subtitles of the dub
+        probe = subprocess.run(
+            ['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'json', VIDEO_FILE],
+            check=True, capture_output=True, text=True,
+        )
+        dimensions = json.loads(probe.stdout)['streams'][0]
+        TARGET_WIDTH, TARGET_HEIGHT = int(dimensions['width']), int(dimensions['height'])
+        rprint(f"[bold green]Video resolution: {TARGET_WIDTH}x{TARGET_HEIGHT}[/bold green]")
+
+        # The built-in typesetting first; the plain subtitles filter if this ffmpeg can not burn it
+        subtitle_filters = get_subtitle_filter_candidates(
+            'dubbed', DUB_SRC_SUB_FILE, DUB_SUB_FILE, TARGET_WIDTH, TARGET_HEIGHT)
+        video_filters = [f'[0:v]scale={TARGET_WIDTH}:{TARGET_HEIGHT}:force_original_aspect_ratio=decrease,'
+                         f'pad={TARGET_WIDTH}:{TARGET_HEIGHT}:(ow-iw)/2:(oh-ih)/2,'
+                         f'{subtitle_filter}[v]' for subtitle_filter in subtitle_filters]
+    else:
+        rprint("[bold yellow]Subtitles are not burned in: the dubbed audio is merged into the original video.[/bold yellow]")
+    audio_filter = None
+    if has_background:
+        audio_filter = '[1:a][2:a]amix=inputs=2:duration=first:dropout_transition=3[a]'
+    else:
+        rprint('[yellow]Original background audio is unavailable; exporting the dubbed voice alone.[/yellow]')
+
+    def with_filters(video_filter):
+        filters = [graph for graph in (video_filter, audio_filter) if graph]
+        full = cmd + (['-filter_complex', ';'.join(filters)] if filters else [])
+        return full + ['-map', '[v]' if burn_subtitles else '0:v:0', '-map', '[a]' if has_background else '1:a']
+
+    encoder = []
     if load_key("ffmpeg_gpu"):
         rprint("[bold green]Using GPU acceleration...[/bold green]")
-        cmd.extend(['-map', '[v]', '-map', '[a]', '-c:v', 'h264_nvenc'])
+        encoder = ['-c:v', 'h264_nvenc']
+    audio_output = ['-c:a', 'aac', '-b:a', '192k', DUB_VIDEO]
+
+    if burn_subtitles:
+        for attempt, video_filter in enumerate(video_filters):
+            try:
+                subprocess.run(with_filters(video_filter) + encoder + audio_output, check=True, stdin=subprocess.DEVNULL)
+                break
+            except subprocess.CalledProcessError:
+                check_cancel()
+                if attempt + 1 == len(video_filters):
+                    raise
+                rprint("[yellow]⚠️ Burning the typeset subtitles failed, trying the plain subtitles filter...[/yellow]")
     else:
-        cmd.extend(['-map', '[v]', '-map', '[a]'])
-    
-    cmd.extend(['-c:a', 'aac', '-b:a', '192k', DUB_VIDEO])
-    
-    subprocess.run(cmd, check=True, stdin=subprocess.DEVNULL)
+        cmd_no_burn = with_filters(None)
+        try:
+            # The picture is not touched, so it is copied as it is
+            subprocess.run(cmd_no_burn + ['-c:v', 'copy'] + audio_output, check=True, stdin=subprocess.DEVNULL)
+        except subprocess.CalledProcessError:
+            rprint("[yellow]The video stream cannot be copied into MP4, encoding it again...[/yellow]")
+            subprocess.run(cmd_no_burn + encoder + audio_output, check=True, stdin=subprocess.DEVNULL)
     rprint(f"[bold green]Video and audio successfully merged into {DUB_VIDEO}[/bold green]")
+
 
 if __name__ == '__main__':
     merge_video_audio()

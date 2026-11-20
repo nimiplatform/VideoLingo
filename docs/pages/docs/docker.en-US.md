@@ -18,7 +18,7 @@ outputs and private notes, but does not sanitize a modified configuration file.
 docker build -t videolingo .
 ```
 
-Default: `nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04`, Python 3.13 and PyTorch
+Default: `nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04`, Python 3.12 and PyTorch
 cu128. For the matched CUDA 12.6 variant:
 
 ```bash
@@ -30,9 +30,14 @@ required at build time: `setup_env.py` passes an explicit build choice to the
 same `installer.py` used on hosts. Other CUDA_VERSION values are rejected.
 
 Both variants use Torch/torchaudio 2.8.0, torchvision 0.23.0 and the same
-`requirements.txt` bounds, including WhisperX 3.8, TorchCodec 0.7, Transformers 4
-and Hub <1. Demucs 4.1 uses normal dependency resolution. Ubuntu supplies FFmpeg
-and its shared libraries, Noto CJK fonts and image runtime libraries.
+`requirements.txt` bounds. The image is Linux, so local recognition uses the default
+Qwen3-ASR + ForcedAligner through the official qwen-asr package (Transformers 4.57,
+Hub <1) on CUDA. WhisperX is not installed in the image and is not an installer option.
+To add it yourself (for example in a derived image), follow
+[WhisperX (manual install)](whisperx-manual.en-US.md). Demucs 4.1 uses normal dependency resolution.
+The installer automatically downloads FFmpeg and ffprobe during the image build.
+Ubuntu supplies Noto CJK fonts and image runtime libraries. Extra FFmpeg shared
+libraries are needed only if you add WhisperX yourself.
 
 ## Run and preserve data
 
@@ -46,7 +51,8 @@ caches when the container is replaced. Mount a local `config.yaml` and
 must exist before mounting, and configuration needs write access for sidebar edits.
 For cu126, use `videolingo:cu126` instead of `videolingo`.
 
-Models are downloaded as needed during processing, not bundled at build time.
+Models (Qwen3-ASR 1.7B/0.6B and the ForcedAligner, several GB) are downloaded to
+the Hugging Face cache volume on first use, not bundled at build time.
 Stop the container with `docker stop videolingo`. Port binding above is local-only;
 remote access requires an intentionally configured listening address and access controls.
 
