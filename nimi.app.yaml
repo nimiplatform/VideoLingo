@@ -19,10 +19,97 @@ required_standardized_feature_refs: []
 storage_policy:
   kind: nimi-mediated-default
 metadata:
-  summary: VideoLingo的Nimi生态适配：媒体导入、字幕校对、配音与批量处理。生成内容需要人工校对。
+  summary: 串联语音转写、语言分析、双语字幕排版校对、人声分离配音与批量处理，帮你把视频和音频带入新语言。生成内容需人工校对。
   icon: docs/public/web-app-manifest-512x512.png
   release_notes: RELEASE_NOTES.md
   author: VideoLingo contributors
+  homepage_url: https://github.com/nimiplatform/VideoLingo
+  support_url: https://github.com/nimiplatform/VideoLingo/issues
+  storefront:
+    category: video-media
+    default_locale: zh
+    locales:
+      zh:
+        tags:
+          - 视频翻译
+          - 双语字幕
+          - 字幕校对
+          - AI 配音
+          - 批量处理
+        highlights:
+          - title: 端到端字幕与双语排版
+            description: 串联语音转写、语言分析、反思润色翻译与按渲染宽度自动断行，支持自定义术语表并可烧录双语字幕视频。
+          - title: 独立双语字幕校对与导出
+            description: 显示字幕与配音字幕分开校对，自动校验时间轴与条目配对，用户修订与模型原稿分存，可导出 SRT 或 ZIP。
+          - title: 人声分离与多音色配音
+            description: 保留背景音轨并分离人声，支持预置音色、已有音色与参考音频配音及响度归一化，中断后保留已完成片段。
+          - title: 批量队列与本地数据可控
+            description: 支持多文件与 XLSX 任务表顺序排队及断点恢复；媒体、项目与结果保存在 Windows PC，AI 路由由 Nimi 托管。
+      en:
+        display_name: VideoLingo
+        summary: Transcribe, translate, proofread bilingual subtitles, dub with vocal separation, and batch-process videos and audio on your PC. Generated output requires human review.
+        introduction: NIMI_APP.en.md
+        tags:
+          - Video Translation
+          - Bilingual Subtitles
+          - Subtitle Proofreading
+          - AI Dubbing
+          - Batch Processing
+        highlights:
+          - title: End-to-End Bilingual Subtitles
+            description: Chains transcription, language analysis, reflective translation, custom glossaries, and rendered-width line wrapping with optional burn-in.
+          - title: Independent Proofreading & Export
+            description: Edit display and dubbing SRTs separately with timing and pairing checks; saved user revisions stay apart from model drafts.
+          - title: Vocal Separation & Dubbing
+            description: Separates vocals to keep original background audio, supports preset, existing, or reference voices, and retains completed clips on resume.
+          - title: Batch Queues on Your PC
+            description: Queue multiple media files or XLSX task sheets with pause and resume; projects and media stay on your Windows PC under Nimi AI routing.
+    media:
+      cover:
+        path: assets/storefront/cover-zh.webp
+        locales:
+          en: assets/storefront/cover-en.webp
+      gallery:
+        - id: subtitle-workspace
+          kind: image
+          path: assets/storefront/cover-zh.webp
+          locales:
+            en: assets/storefront/cover-en.webp
+          caption:
+            zh: 双语字幕视频与排版参数：4 步自动完成识别、分句、翻译与烧录，预览按渲染宽度自动换行的双语成片
+            en: "Bilingual subtitle video & layout settings: run the 4-step pipeline and preview rendered-width bilingual subtitles ready to export"
+        - id: subtitle-proofread
+          kind: image
+          path: assets/storefront/subtitle-proofread-zh.webp
+          locales:
+            en: assets/storefront/subtitle-proofread-en.webp
+          caption:
+            zh: 双语字幕校对：原文与译文 SRT 并排修订并校验时间轴配对，用户修订与模型原稿分开保存
+            en: "Bilingual subtitle proofreading: edit source and translation SRTs side by side with timing checks, separate from model drafts"
+        - id: dubbing-studio
+          kind: image
+          path: assets/storefront/dubbing-studio-zh.webp
+          locales:
+            en: assets/storefront/dubbing-studio-en.webp
+          caption:
+            zh: 人声分离与配音合成：支持预置声音、已有音色或参考音频，保留原背景音轨并合成混合音频与配音视频
+            en: "Vocal separation and dubbing: pick preset, existing, or reference voices while keeping background audio and mixing dubbed output"
+        - id: batch-queue
+          kind: image
+          path: assets/storefront/batch-queue-zh.webp
+          locales:
+            en: assets/storefront/batch-queue-en.webp
+          caption:
+            zh: 批量处理队列：多项目顺序执行、逐条查看进度与导出成品，支持暂停保留进度与 XLSX 任务表导入
+            en: "Batch processing queue: run projects in order with per-item status, direct output exports, pause/resume, and XLSX task sheet import"
+        - id: pipeline-steps
+          kind: image
+          path: assets/storefront/pipeline-steps-zh.webp
+          locales:
+            en: assets/storefront/pipeline-steps-en.webp
+          caption:
+            zh: 分步识别与处理：查看语音转写原文、时间单元计数并导出 transcript.txt 或清理后的分块表格
+            en: "Step-by-step recognition: inspect source transcripts, alignment unit counts, and export transcript.txt or cleaned chunk tables"
 local_development:
   mobile:
     command: pnpm run dev:android

@@ -3,6 +3,9 @@ LICENSE -text
 # Package-managed text must retain canonical LF bytes on Windows checkouts.
 AGENTS.md text eol=lf
 .agents/skills/nimi-app-lifecycle/** text eol=lf
+.nimi/admission/** text eol=lf
+.nimi/config/** text eol=lf
+.nimi/contracts/** text eol=lf
 .nimi/methodology/authority-authoring.yaml text eol=lf
 .github/workflows/nimi-app-release.yml text eol=lf
 .github/workflows/nimi-web-release.yml text eol=lf

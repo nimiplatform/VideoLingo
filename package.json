@@ -64,7 +64,7 @@
     "vite": "^8.3.8",
     "yaml": "^2.9.0",
     "@capacitor/cli": "8.6.0",
-    "@nimiplatform/app-tools": "^0.16.0-rc.10",
+    "@nimiplatform/app-tools": "^0.16.0-rc.12",
     "@nimiplatform/nimi-coding": "0.7.0"
   }
 }
