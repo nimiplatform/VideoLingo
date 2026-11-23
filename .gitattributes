@@ -9,3 +9,6 @@ AGENTS.md text eol=lf
 .nimi/methodology/authority-authoring.yaml text eol=lf
 .github/workflows/nimi-app-release.yml text eol=lf
 .github/workflows/nimi-web-release.yml text eol=lf
+NIMI_APP.md text eol=lf
+NIMI_APP.*.md text eol=lf
+RELEASE_NOTES.md text eol=lf
